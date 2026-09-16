@@ -1,11 +1,13 @@
 # kmux
 
-## A Kindle window onto the work already running elsewhere.
+## An e-ink terminal for remote development.
 
-kmux brings remote tmux sessions and Herdr workspaces to a jailbroken Kindle.
-The Kindle is an e-ink client: it renders a compact 80×24 terminal, keeps
-history readable, and adds touch-friendly controls for sessions, tabs, panes,
-copy mode, files, snippets, and agent status.
+kmux turns a jailbroken Kindle into a terminal for remote development. It
+brings multiple machines, tmux sessions, Herdr workspaces, coding agents, and
+shells into one simple interface, with input and navigation designed for an
+e-ink screen. The Kindle renders a compact 80×24 terminal, keeps history
+readable, and adds touch-friendly controls for sessions, tabs, panes, copy
+mode, files, snippets, and agent status.
 
 ![kmux feature tour](docs/kmux-demo.gif)
 
