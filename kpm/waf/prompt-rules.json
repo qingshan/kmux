@@ -1,0 +1,60 @@
+{
+  "fallback": "shell",
+  "rules": [
+    {
+      "id": "ai",
+      "match": [
+        "grok",
+        "codex",
+        "claude",
+        "gemini",
+        "aider"
+      ],
+      "keys": [
+        { "label": "C", "key": "C-c", "title": "Ctrl-C cancel" },
+        { "label": "D", "key": "C-d", "title": "Ctrl-D" },
+        { "label": "/clear", "slash": "/clear" },
+        { "label": "/resume", "slash": "/resume" },
+        { "label": "/compact", "slash": "/compact" },
+        { "label": "/memory", "slash": "/memory" },
+        { "label": "/help", "slash": "/help" },
+        { "label": "/model", "slash": "/model" },
+        { "label": "/exit", "slash": "/exit" }
+      ]
+    },
+    {
+      "id": "python",
+      "match": ["python", "ipython", "ptpython"],
+      "keys": [
+        { "label": "C", "key": "C-c", "title": "KeyboardInterrupt" },
+        { "label": "D", "key": "C-d", "title": "EOF" },
+        { "label": "L", "key": "C-l", "title": "Clear" },
+        { "label": "A", "key": "C-a", "title": "Start of line" },
+        { "label": "E", "key": "C-e", "title": "End of line" },
+        { "label": "K", "key": "C-k", "title": "Kill to end" },
+        { "label": "U", "key": "C-u", "title": "Kill to start" },
+        { "label": "W", "key": "C-w", "title": "Kill word" },
+        { "label": "Y", "key": "C-y", "title": "Yank" },
+        { "label": "R", "key": "C-r", "title": "Reverse search" }
+      ]
+    },
+    {
+      "id": "shell",
+      "match": ["fish", "bash", "zsh", "sh", "dash", "ash"],
+      "keys": [
+        { "label": "C", "key": "C-c", "title": "Interrupt" },
+        { "label": "D", "key": "C-d", "title": "EOF / delete" },
+        { "label": "Z", "key": "C-z", "title": "Suspend" },
+        { "label": "L", "key": "C-l", "title": "Clear screen" },
+        { "label": "A", "key": "C-a", "title": "Start of line" },
+        { "label": "E", "key": "C-e", "title": "End of line" },
+        { "label": "K", "key": "C-k", "title": "Kill to end" },
+        { "label": "U", "key": "C-u", "title": "Kill to start" },
+        { "label": "W", "key": "C-w", "title": "Kill word" },
+        { "label": "Y", "key": "C-y", "title": "Yank" },
+        { "label": "R", "key": "C-r", "title": "Reverse search" },
+        { "label": "T", "key": "C-t", "title": "Transpose" }
+      ]
+    }
+  ]
+}

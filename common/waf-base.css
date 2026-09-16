@@ -1,0 +1,105 @@
+/* Shared CSS2 chrome for qingshan Mesquite WAFs. No flexbox/grid,
+   no position:fixed. Per-app style.css loads after this file. */
+
+html, body {
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    font-family: Helvetica, Arial, sans-serif;
+    color: #000;
+    background: #fff;
+}
+
+.page {
+    padding: 0.3em;
+}
+
+.top h1 {
+    display: inline-block;
+    font-size: 1.1em;
+    margin: 0 0.4em 0 0;
+    vertical-align: middle;
+}
+
+.state {
+    display: inline-block;
+    font-size: 0.95em;
+    font-weight: bold;
+    padding: 0.08em 0.4em;
+    border: 2px solid #000;
+    vertical-align: middle;
+}
+
+.state-idle {
+    background: #fff;
+    color: #444;
+    border-style: dashed;
+}
+
+.state-running, .state-stopping {
+    background: #000;
+    color: #fff;
+}
+
+.state-done, .state-ok, .state-up {
+    background: #fff;
+    color: #000;
+}
+
+.state-error, .state-down {
+    background: #000;
+    color: #fff;
+}
+
+.state-unknown {
+    background: #fff;
+    color: #444;
+    border-style: dashed;
+}
+
+.error {
+    font-size: 0.75em;
+    margin-top: 0.15em;
+    font-weight: bold;
+}
+
+.buttons {
+    margin: 0.2em 0;
+}
+
+.buttons button, .field button, .tabs button {
+    font-size: 0.85em;
+    padding: 0.2em 0.5em;
+    margin: 0 0.2em 0.15em 0;
+}
+
+.tabs {
+    border-top: 2px solid #000;
+    border-bottom: 2px solid #000;
+    margin: 0.2em 0;
+    padding: 0.15em 0;
+}
+
+.tabs button {
+    font-size: 0.9em;
+    font-weight: bold;
+}
+
+.tabs button.active {
+    background: #000;
+    color: #fff;
+}
+
+.view {
+    margin-top: 0.15em;
+}
+
+.field {
+    margin: 0.15em 0;
+}
+
+.empty {
+    color: #666;
+    font-size: 0.8em;
+    margin: 0.25em 0;
+}

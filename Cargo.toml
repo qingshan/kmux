@@ -1,0 +1,7 @@
+[workspace]
+resolver = "2"
+members = ["crates/kmux", "crates/kmux-proxy"]
+
+[workspace.package]
+edition = "2021"
+license = "MIT"

@@ -1,0 +1,21 @@
+[package]
+name = "kmux"
+version = "0.5.32"
+edition.workspace = true
+license.workspace = true
+description = "tmux control-mode terminal daemon (LIPC service dev.qingshan.kmuxd) for the kmux Kindle package"
+build = "build.rs"
+
+[lib]
+name = "kmuxd"
+path = "src/lib.rs"
+
+[[bin]]
+name = "kmuxd"
+path = "src/bin/kmuxd.rs"
+
+[dependencies]
+libc = "0.2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+vte = "0.14"

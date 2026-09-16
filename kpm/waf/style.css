@@ -1,0 +1,565 @@
+/* E-ink friendly styling for the kmux WAF: CSS2-only (Mesquite's old
+   WebKit - no flexbox/grid). The terminal pane is 80x24 rendered in the
+   bundled Nerd Font with bold/inverse runs and a cursor cell. */
+
+@font-face {
+    font-family: "JBMonoNerd";
+    src: url("fonts/JetBrainsMonoNerdFontMono-Regular.ttf");
+}
+@font-face {
+    font-family: "NotoEmoji";
+    src: url("fonts/NotoEmoji-Regular.ttf");
+}
+
+html, body {
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    font-family: Helvetica, Arial, sans-serif;
+    color: #000;
+    background: #fff;
+}
+
+/* Invisible capture input: the terminal-tap keyboard flow focuses it to
+   summon the on-screen keyboard; it must stay focusable, so move it off
+   screen instead of display:none. */
+.hidden-capture {
+    position: absolute;
+    left: -9999px;
+    width: 1px;
+    height: 1px;
+    border: 0;
+    padding: 0;
+}
+
+/* The whole page must fit above the on-screen keyboard; kill the old
+   WebKit's default spacing on every block. */
+button, input, textarea, pre, h1, .page, .top, .tabs, .view, .keys, .buttons, .field {
+    margin: 0;
+    padding: 0;
+}
+/* The section wrappers inherit a 16px line box from body; give them
+   explicit tiny font/line-height so the inline buttons/fields sit tight. */
+.buttons, .keys, .field, #view-main, .kb-chrome {
+    font-size: 0.9em;
+    line-height: 1.15;
+}
+
+.page {
+    /* Vertical inset only. Horizontal padding stole ~2 terminal cells, so
+       an 80-column row (e.g. ..._ID_CLOUDI) clipped the last glyphs. */
+    padding: 0.15em 0;
+}
+.top, .keys, .buttons, .field, .note, .kb-chrome {
+    padding-left: 0.15em;
+    padding-right: 0.15em;
+}
+
+.top {
+    overflow: hidden; /* contain the right-floated tabs */
+}
+.top h1 {
+    display: inline-block;
+    font-size: 1.0em;
+    margin: 0.1em 0.4em 0 0;
+    vertical-align: middle;
+}
+
+/* Status badge: overlaid on the top-right corner of the terminal frame
+   instead of sharing the top chrome row, so the window tabs get the bar. */
+.state {
+    position: absolute;
+    top: 0.12em;
+    right: 0.12em;
+    z-index: 2;
+    display: block;
+    font-size: 0.64em;
+    font-weight: bold;
+    padding: 0.04em 0.3em;
+    border: 1px solid #000;
+    background: #fff;
+    text-align: center;
+    white-space: nowrap;
+}
+
+.state-ok {
+    background: #fff;
+    color: #000;
+}
+
+.state-error {
+    background: #000;
+    color: #fff;
+}
+
+.state-unknown {
+    background: #fff;
+    color: #444;
+    border-style: dashed;
+}
+
+.tabs {
+    float: right;
+    margin: 0.1em 0 0 0.3em;
+    white-space: nowrap;
+}
+
+.tabs button {
+    font-family: "JBMonoNerd", "NotoEmoji", monospace;
+    font-size: 0.78em;
+    font-weight: bold;
+    padding: 0.1em 0.5em;
+    margin: 0 0.15em 0 0;
+    border: 1px solid #000;
+    background: #fff;
+    color: #000;
+    cursor: pointer;
+}
+
+.tabs button.active {
+    background: #000;
+    color: #fff;
+}
+
+/* Press flash: invert while :active. JS also applies inline invert
+   because this WebKit often never delivers mouseup. */
+button:active {
+    background: #000;
+    color: #fff;
+}
+button.active:active {
+    background: #fff;
+    color: #000;
+}
+
+.view {
+    margin-top: 0.05em;
+}
+
+/* Terminal window tabs: one compact row above the screen. The status
+   badge left the top chrome, so the strip may now use most of the bar
+   (the right Settings/Exit cluster keeps ~15%). */
+.wintabs {
+    float: left;
+    margin: 0.08em 0.2em 0 0;
+    line-height: 1.3;
+    white-space: nowrap;
+    overflow: hidden;
+    max-width: 85%;
+}
+.wintab {
+    display: inline-block;
+    font-family: "JBMonoNerd", "NotoEmoji", monospace;
+    font-size: 0.64em;
+    padding: 0.05em 0.4em;
+    margin: 0 0.15em 0 0;
+    border: 1px solid #000;
+    cursor: pointer;
+    background: #fff;
+    color: #000;
+}
+.wintab.active {
+    background: #000;
+    color: #fff;
+    font-weight: bold;
+}
+.wintab:active {
+    background: #000;
+    color: #fff;
+}
+.wintab.active:active {
+    background: #fff;
+    color: #000;
+}
+.wintab-new {
+    background: #fff;
+    color: #000;
+    font-weight: bold;
+    padding: 0.05em 0.35em;
+}
+/* Session chip: not a window tab. Underline + chevron; tap opens the
+   window dropdown. When open it inverts like an active tab. */
+.wintab-session {
+    border: none;
+    border-bottom: 2px solid #000;
+    background: #fff;
+    color: #000;
+    font-weight: bold;
+    font-size: 0.72em;
+    padding: 0.02em 0.15em 0 0.15em;
+    margin-right: 0.5em;
+    border-radius: 0;
+}
+.wintab-session.active {
+    background: #000;
+    color: #fff;
+    border-bottom-color: #000;
+}
+
+.term-area {
+    /* Auto width (not 100%) so the 1px frame sits inside the page box.
+       Relative: anchors the overlaid status badge. */
+    position: relative;
+    margin: 0 0.15em 0 0.15em;
+}
+.term-wrap {
+    border: 1px solid #000;
+    padding: 1px;
+    overflow: hidden;
+}
+.term {
+    font-family: "JBMonoNerd", "NotoEmoji", monospace;
+    font-size: 0.60em;
+    line-height: 1.08em;
+    width: 100%;
+    /* One <td> per column so 80 cells share the WAF width. A single
+       colspan=80 <td> (or a <pre>) still overflowed the last glyph. */
+    table-layout: fixed;
+    border-collapse: collapse;
+    border-spacing: 0;
+    padding: 0;
+    margin: 0;
+    white-space: pre;
+}
+.term td {
+    padding: 0;
+    margin: 0;
+    /* Visible so a Nerd Font icon in a 1-col cell is not clipped.
+       Emoji still use colspan=2 so they do not cover the next space. */
+    overflow: visible;
+    white-space: pre;
+    vertical-align: top;
+    text-align: left;
+}
+
+.term .b {
+    font-weight: bold;
+}
+
+.term .i, .term .bi {
+    background: #000;
+    color: #fff;
+}
+
+.term .hl {
+    background: #000;
+    color: #fff;
+    font-weight: bold;
+}
+
+.term .cur {
+    background: #000;
+    color: #fff;
+    font-weight: bold;
+}
+
+.buttons {
+    margin: 0.05em 0;
+}
+
+.buttons button, .field button, .tabs button, .keys button {
+    font-family: "JBMonoNerd", "NotoEmoji", monospace;
+    font-size: 0.72em;
+    padding: 0.1em 0.4em;
+    margin: 0 0.15em 0.1em 0;
+}
+.kb-chrome button {
+    font-family: "JBMonoNerd", "NotoEmoji", monospace;
+    font-size: 0.8em;
+    padding: 0.28em 0.42em;
+    margin: 0 0.12em 0 0;
+}
+
+.keys {
+    white-space: nowrap;
+}
+.keys button {
+    font-size: 0.82em;
+    padding: 0.26em 0.32em;
+    line-height: 1.2;
+}
+
+/* Keyboard chrome: always visible under the terminal. Tabs, then
+   actions, then a single toolbar row. */
+.kb-chrome {
+    margin: 0;
+    padding: 0.12em 0.15em 0.04em 0.15em;
+    background: #fff;
+    border-top: 0;
+}
+.kb-shortcuts,
+.kb-stabs,
+.kb-panels {
+    margin: 0.24em 0 0 0;
+}
+.kb-stabs {
+    display: block;
+    white-space: nowrap;
+}
+.kb-panels {
+    display: block;
+}
+.kb-stabs button {
+    font-size: 0.72em;
+    padding: 0.28em 0.5em;
+    margin: 0 0.12em 0 0;
+    border: 1px solid #000;
+    background: #fff;
+    color: #000;
+}
+.kb-stabs button.active {
+    background: #000;
+    color: #fff;
+}
+.kb-panel {
+    display: block;
+    white-space: nowrap;
+    margin: 0;
+    line-height: 1.2;
+}
+.kb-panel-wrap {
+    white-space: nowrap;
+}
+.kb-panel button, .kb-search {
+    font-family: "JBMonoNerd", "NotoEmoji", monospace;
+    font-size: 0.8em;
+    line-height: 1.15;
+    height: 1.9em;
+    padding: 0 0.42em;
+    margin: 0 0.12em 0 0;
+    border: 1px solid #000;
+    background: #fff;
+    color: #000;
+    vertical-align: middle;
+    display: inline-block;
+    -webkit-box-sizing: border-box;
+    box-sizing: border-box;
+}
+.kb-toolbar button {
+    font-size: 0.74em;
+    padding: 0.32em 0.42em;
+    line-height: 1.2em;
+    margin: 0 0.08em 0 0;
+    border: 1px solid #000;
+    background: #fff;
+    color: #000;
+    vertical-align: middle;
+}
+.kb-panel button.active, .kb-toolbar button.active {
+    background: #000;
+    color: #fff;
+}
+.kb-stabs button:active, .kb-panel button:active, .kb-toolbar button:active {
+    background: #000;
+    color: #fff;
+}
+.kb-stabs button.active:active,
+.kb-panel button.active:active,
+.kb-toolbar button.active:active {
+    background: #fff;
+    color: #000;
+}
+.kb-search {
+    width: 7.5em;
+    -webkit-appearance: none;
+    -webkit-border-radius: 0;
+    border-radius: 0;
+}
+.kb-toolbar {
+    display: block;
+    white-space: nowrap;
+    margin: 0.24em 0 0 0;
+    padding: 0;
+    border: 0;
+    line-height: 1.2;
+    overflow: hidden;
+}
+.kb-g {
+    display: inline-block;
+    white-space: nowrap;
+    margin: 0 0.12em 0 0;
+    vertical-align: middle;
+}
+
+.field {
+    margin: 0.05em 0;
+}
+
+.field input[type="text"] {
+    font-size: 0.72em;
+    padding: 0.1em;
+    width: 70%;
+}
+
+/* Shared CSS2 overlay chrome. Every popup is anchored below the top bar;
+   lists scroll inside the frame and never push the terminal or keyboard. */
+.overlay {
+    /* Terminal is 0.60em inside #view-main's 0.9em = 0.54em of .page.
+       Overlays are direct .page children; avoid compounding that scale. */
+    font-size: 0.54em;
+    line-height: 1.25;
+    position: absolute;
+    left: 1.48em;
+    right: 1.48em;
+    margin: 0.37em 0 0 0;
+    padding: 0.93em;
+    background: #fff;
+    color: #000;
+    border: 2px solid #000;
+    max-height: 35.2em;
+    overflow: auto;
+    word-wrap: break-word;
+    z-index: 8;
+}
+.overlay-header, .overlay-footer { overflow: hidden; }
+.overlay-title {
+    margin-right: 2.5em;
+    font-size: 1em;
+    font-weight: bold;
+    line-height: 2;
+}
+.overlay .overlay-icon {
+    float: right;
+    /* One compact size for Close, Send, and Save throughout the popups. */
+    width: 2em;
+    height: 2em;
+    margin: 0;
+    padding: 0;
+    border: 1px solid #000;
+    background: #fff;
+    color: #000;
+    font-family: "JBMonoNerd", monospace;
+    font-size: 1em;
+    line-height: 1.5;
+    text-align: center;
+    cursor: pointer;
+}
+.overlay .overlay-primary { background: #000; color: #fff; }
+.overlay-footer { margin-top: 0.45em; }
+.overlay-text-btn {
+    float: left;
+    height: 2em;
+    margin: 0;
+    padding: 0 0.7em;
+    border: 1px solid #000;
+    background: #fff;
+    color: #000;
+    font-size: 1em;
+    line-height: 1.8;
+    cursor: pointer;
+}
+.diagnose-report {
+    max-height: 5.2em;
+    overflow: auto;
+    margin: 0.45em 0 0 0;
+    padding: 0;
+    font-family: "JBMonoNerd", "NotoEmoji", monospace;
+    line-height: 1.3;
+}
+.diagnose-report .fail { font-weight: bold; }
+.menu-groups { overflow: hidden; margin-top: 0.45em; }
+.overlay .menu-group {
+    float: left;
+    box-sizing: border-box;
+    width: 25%;
+    height: 2em;
+    margin: 0;
+    padding: 0;
+    border: 1px solid #000;
+    font-family: "JBMonoNerd", monospace;
+    font-size: 1em;
+    background: #fff;
+    color: #000;
+    cursor: pointer;
+}
+.overlay .menu-group.active { background: #000; color: #fff; }
+.overlay .search-field {
+    position: relative;
+    margin: 0.45em 0;
+    border: 1px solid #000;
+    font-size: 1em;
+    padding: 0.4em 0.4em 0.4em 1.8em;
+}
+.overlay .search-icon {
+    position: absolute;
+    left: 0.4em;
+    top: 50%;
+    margin-top: -0.5em;
+    font-family: "JBMonoNerd", monospace;
+    line-height: 1;
+}
+.overlay input, .overlay textarea {
+    display: block;
+    box-sizing: border-box;
+    width: 100%;
+    margin: 0;
+    padding: 0.4em;
+    border: 1px solid #000;
+    background: #fff;
+    color: #000;
+    font-family: "JBMonoNerd", "NotoEmoji", monospace;
+    font-size: 1em;
+    line-height: 1.25;
+}
+.overlay input:focus, .overlay textarea:focus { outline: 1px solid #000; }
+.overlay .search-field input {
+    padding: 0;
+    border: 0;
+    outline: 0;
+    font-size: 1em;
+}
+.overlay-field { margin: 0.45em 0; }
+.overlay-field label {
+    display: block;
+    margin-bottom: 0.2em;
+    font-size: 1em;
+}
+.overlay-list {
+    max-height: 22.2em;
+    overflow: auto;
+    margin-top: 0.45em;
+}
+.win-menu-item, .paste-item {
+    font-family: "JBMonoNerd", "NotoEmoji", monospace;
+    font-size: 1em;
+    font-weight: normal;
+    padding: 0.65em;
+    min-height: 1.5em;
+    border: 1px solid #000;
+    margin: 0 0 0.3em 0;
+    word-wrap: break-word;
+    cursor: pointer;
+}
+.win-menu-item:active, .paste-item:active { background: #000; color: #fff; }
+.win-menu-item .win-ico { display: inline-block; width: 1.2em; }
+.win-menu-item.create { border-style: dashed; }
+.agent-badge { font-size: 0.85em; white-space: nowrap; }
+.overlay .agent-badge { font-size: 1em; }
+.overlay .empty, .paste-empty, .overlay-message {
+    padding: 0.4em 0;
+    font-size: 1em;
+    line-height: 1.4;
+    word-wrap: break-word;
+}
+.overlay .note {
+    margin-top: 0.3em;
+    padding: 0;
+    font-size: 1em;
+}
+.term-compose textarea {
+    height: 12.3em; /* Preserve the large editor area at the smaller font. */
+    margin: 0.45em 0;
+    overflow: auto;
+}
+.compose-hint {
+    margin-right: 2.5em;
+    font-size: 1em;
+    line-height: 1.4;
+}
+
+.note {
+    font-size: 0.75em;
+    color: #666;
+    margin-top: 0.3em;
+    word-wrap: break-word;
+}

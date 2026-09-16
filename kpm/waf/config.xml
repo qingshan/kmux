@@ -1,0 +1,30 @@
+<?xml version="1.0"?>
+<widget id="dev.qingshan.kmux" version="1.0" viewmodes="application"
+    xmlns="http://www.w3.org/ns/widgets"
+    xmlns:kindle="http://kindle.amazon.com/ns/widget-extensions">
+
+    <name xml:lang="en">KMux</name>
+    <description xml:lang="en">Terminal for a remote tmux session (control mode via kmux-proxy)</description>
+
+    <content src="index.html" />
+
+    <feature name="http://kindle.amazon.com/apis" required="true">
+        <param name="appmgr" value="yes" />
+        <param name="messaging" value="yes" />
+        <param name="chrome" value="yes" />
+    </feature>
+
+    <kindle:messaging>
+        <kindle:app name="com.lab126.chromebar" value="yes" />
+        <kindle:app name="dev.qingshan.kmuxd" value="yes" />
+    </kindle:messaging>
+
+    <kindle:chrome>
+        <kindle:asset key="configureSearchBar" value="none" />
+    </kindle:chrome>
+
+    <kindle:settings>
+        <kindle:setting name="internetRequired" value="no" />
+        <kindle:setting name="saveContext" value="no" />
+    </kindle:settings>
+</widget>

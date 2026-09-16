@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>KMux</title>
+<link rel="stylesheet" type="text/css" href="waf-base.css">
+<link rel="stylesheet" type="text/css" href="style.css?v=0.5.32">
+</head>
+<body>
+<div class="page">
+    <div class="top">
+        <div id="window-tabs" class="wintabs"></div>
+        <div class="tabs">
+            <button id="tab-settings" type="button" class="tab" title="Settings">&#xF013;</button>
+            <button id="btn-exit" type="button" class="tab" title="Exit KMux">&#xF08B;</button>
+        </div>
+    </div>
+    <div id="win-menu" class="win-menu overlay" role="dialog" aria-labelledby="menu-title" style="display:none">
+        <div class="overlay-header">
+            <button type="button" id="close-win-menu" class="overlay-icon" title="Close sessions" aria-label="Close sessions"><span aria-hidden="true">&#xF00D;</span></button>
+            <div id="menu-title" class="overlay-title">Switch to</div>
+        </div>
+        <div id="menu-groups" class="menu-groups" role="tablist" aria-label="Navigation group">
+            <button type="button" id="menu-group-hosts" class="menu-group" data-menu-group="hosts" role="tab" aria-controls="menu-list" aria-selected="false">Hosts</button>
+            <button type="button" id="menu-group-sessions" class="menu-group active" data-menu-group="sessions" role="tab" aria-controls="menu-list" aria-selected="true">Sessions</button>
+            <button type="button" id="menu-group-panes" class="menu-group" data-menu-group="panes" role="tab" aria-controls="menu-list" aria-selected="false">Panes</button>
+            <button type="button" id="menu-group-agents" class="menu-group" data-menu-group="agents" role="tab" aria-controls="menu-list" aria-selected="false">Agents</button>
+        </div>
+        <div class="search-field" id="menu-search-field">
+            <span class="search-icon">&#xF002;</span>
+            <input type="text" id="f-menu-search" placeholder="Search sessions&hellip;">
+        </div>
+        <div id="menu-list" class="overlay-list" role="tabpanel" aria-labelledby="menu-group-sessions"></div>
+    </div>
+    <div id="act-menu" class="act-menu overlay" role="dialog" aria-labelledby="actions-title" style="display:none">
+        <div class="overlay-header">
+            <button type="button" id="close-act-menu" class="overlay-icon" title="Close actions" aria-label="Close actions"><span aria-hidden="true">&#xF00D;</span></button>
+            <div id="actions-title" class="overlay-title">Tab actions</div>
+        </div>
+        <div class="overlay-list">
+        <div class="win-menu-item" data-kind="act" data-op="kill_window">Close tab</div>
+        <div class="win-menu-item" data-kind="act" data-op="next_window">Next tab</div>
+        <div class="win-menu-item" data-kind="act" data-op="prev_window">Previous tab</div>
+        <div class="win-menu-item" data-kind="act" data-op="copy_mode">Enter Copy Mode</div>
+        <div class="win-menu-item" data-kind="act" data-op="detach">Detach</div>
+        </div>
+    </div>
+
+    <div id="file-picker" class="file-picker overlay" role="dialog" aria-labelledby="files-title" style="display:none">
+        <div class="overlay-header">
+            <button type="button" id="close-file-picker" class="overlay-icon" title="Close files" aria-label="Close files"><span aria-hidden="true">&#xF00D;</span></button>
+            <div id="files-title" class="overlay-title">Insert file</div>
+        </div>
+        <div class="note" id="file-cwd"></div>
+        <div class="search-field" id="file-search-field">
+            <span class="search-icon">&#xF002;</span>
+            <input type="text" id="f-file-search" placeholder="Search files (fuzzy)&hellip;">
+        </div>
+        <div id="file-list" class="overlay-list"></div>
+    </div>
+
+    <div id="paste-pop" class="paste-pop overlay" role="dialog" aria-labelledby="clipboard-title" style="display:none">
+        <div class="overlay-header">
+            <button type="button" id="close-paste-pop" class="overlay-icon" title="Close clipboard" aria-label="Close clipboard"><span aria-hidden="true">&#xF00D;</span></button>
+            <div id="clipboard-title" class="overlay-title">Clipboard history</div>
+        </div>
+        <div id="paste-list" class="paste-list overlay-list"></div>
+    </div>
+
+    <div id="snippet-pop" class="paste-pop overlay" role="dialog" aria-labelledby="snippets-title" style="display:none">
+        <div class="overlay-header">
+            <button type="button" id="close-snippet-pop" class="overlay-icon" title="Close snippets" aria-label="Close snippets"><span aria-hidden="true">&#xF00D;</span></button>
+            <div id="snippets-title" class="overlay-title">Quick snippets</div>
+        </div>
+        <div id="snippet-list" class="paste-list overlay-list"></div>
+    </div>
+
+    <div id="term-compose" class="term-compose overlay" role="dialog" aria-labelledby="compose-title" style="display:none">
+        <div class="overlay-header">
+            <button type="button" id="btn-compose-cancel" class="overlay-icon" title="Close without sending" aria-label="Close without sending"><span aria-hidden="true">&#xF00D;</span></button>
+            <div id="compose-title" class="overlay-title">Send text to terminal</div>
+        </div>
+        <textarea id="f-compose" rows="5" cols="40" aria-label="Text to send" placeholder="Type or paste text..."></textarea>
+        <div class="overlay-footer">
+            <button type="button" id="btn-compose-send" class="overlay-icon overlay-primary active" title="Send text without Enter" aria-label="Send text without Enter"><span aria-hidden="true">&#xF1D8;</span></button>
+            <div class="compose-hint">Enter: send text + Enter<br>Shift+Enter: new line</div>
+        </div>
+    </div>
+
+    <div id="view-settings" class="overlay" role="dialog" aria-labelledby="settings-title" style="display:none">
+        <div class="overlay-header">
+            <button type="button" id="close-view-settings" class="overlay-icon" title="Close settings" aria-label="Close settings"><span aria-hidden="true">&#xF00D;</span></button>
+            <div id="settings-title" class="overlay-title">Settings</div>
+        </div>
+        <div class="overlay-field"><label for="f-proxy">Proxy URL</label><input type="text" id="f-proxy" value="https://kmux.qingshan.dev" placeholder="https://kmux.qingshan.dev"></div>
+        <div class="overlay-field"><label for="f-token">Shared token</label><input type="text" id="f-token" placeholder="Leave blank to keep the saved token"></div>
+        <div class="overlay-field"><label for="f-socks5">SOCKS5 proxy (optional)</label><input type="text" id="f-socks5" placeholder="Blank for direct HTTPS"></div>
+        <div class="overlay-footer">
+            <button id="btn-diagnose" type="button" class="overlay-text-btn" title="Check proxy, SSH, tmux and Herdr" aria-label="Diagnose connection">Diagnose</button>
+            <button id="btn-save" class="overlay-icon overlay-primary active" type="button" title="Save settings" aria-label="Save settings">&#xF0C7;</button>
+        </div>
+        <div id="diagnose-report" class="diagnose-report overlay-message" style="display:none"></div>
+        <div class="note">Use HTTPS for public access. Leave SOCKS5 blank to connect directly. Terminal size is 80x24.</div>
+    </div>
+
+    <div id="err-pop" class="err-pop overlay" role="dialog" aria-labelledby="error-title" style="display:none">
+        <div class="overlay-header">
+            <button type="button" id="close-err-pop" class="overlay-icon" title="Close error" aria-label="Close error"><span aria-hidden="true">&#xF00D;</span></button>
+            <div id="error-title" class="overlay-title">Connection details</div>
+        </div>
+        <div id="error-message" class="overlay-message"></div>
+    </div>
+
+    <div id="view-main" class="view">
+        <div id="term-area" class="term-area">
+            <div id="term" class="term-wrap"></div>
+            <div id="state" class="state state-unknown">Connecting&hellip;</div>
+        </div>
+        <!-- Shortcut panels + toolbar stay under the terminal; the Kindle
+             keyboard is held open with them. -->
+        <div id="kb-chrome" class="kb-chrome">
+            <div class="kb-shortcuts">
+                <div id="kb-stabs" class="kb-stabs">
+                    <button type="button" data-panel="scroll" class="active">Scroll</button>
+                    <button type="button" data-panel="prompt">Prompt</button>
+                    <button type="button" data-panel="tools">Tools</button>
+                </div>
+                <div class="kb-panels">
+                    <div id="panel-scroll" class="kb-panel">
+                        <button type="button" data-scroll="up" id="btn-up" title="Page up history">&#x21DE;</button>
+                        <button type="button" data-scroll="down" id="btn-down" title="Page down history">&#x21DF;</button>
+                        <button type="button" data-scroll="bottom" id="btn-bottom" title="Back to live">&#xF103;</button>
+                        <button type="button" data-act="cmd-prev" title="Previous command (M-Up)">M-&#x2191;</button>
+                        <button type="button" data-act="cmd-next" title="Next command (M-Down)">M-&#x2193;</button>
+                        <input type="text" id="f-scroll-search" class="kb-search" placeholder="Search&hellip;">
+                        <button type="button" data-act="search-back" id="btn-search-back" title="Search backward">&#x2191;</button>
+                        <button type="button" data-act="search-fwd" id="btn-search-fwd" title="Search forward">&#x2193;</button>
+                        <button type="button" data-act="search-clear" id="btn-search-clear" title="Clear search">&#x00D7;</button>
+                    </div>
+                    <div id="panel-prompt" class="kb-panel kb-panel-wrap" style="display:none">
+                        <span id="prompt-list"></span>
+                    </div>
+                    <div id="panel-tools" class="kb-panel kb-panel-wrap" style="display:none">
+                        <button type="button" data-act="files" id="btn-files" title="Insert file">Files</button>
+                        <button type="button" data-act="paste" id="btn-paste" title="Paste">Paste</button>
+                        <button type="button" data-act="snippets" id="btn-snippets" title="Quick snippets">Snippets</button>
+                    </div>
+                </div>
+            </div>
+            <div id="kb-toolbar" class="kb-toolbar">
+                <span class="kb-g">
+                    <button type="button" data-mod="ctrl" title="Ctrl">Ctrl</button>
+                    <button type="button" data-mod="alt" title="Alt">Alt</button>
+                </span>
+                <span class="kb-g">
+                    <button type="button" data-key="Escape" title="Escape">Esc</button>
+                    <button type="button" data-key="Tab" title="Tab">Tab</button>
+                    <button type="button" data-key="Left" title="Left">&#xF060;</button>
+                    <button type="button" data-key="Up" title="Up">&#xF062;</button>
+                    <button type="button" data-key="Down" title="Down">&#xF063;</button>
+                    <button type="button" data-key="Right" title="Right">&#xF061;</button>
+                </span>
+                <span class="kb-g">
+                    <button type="button" data-text="|">|</button>
+                    <button type="button" data-text="/">/</button>
+                    <button type="button" data-text="&#92;">\</button>
+                    <button type="button" data-text="~">~</button>
+                    <button type="button" data-text="-">-</button>
+                    <button type="button" data-text="_">_</button>
+                </span>
+                <span class="kb-g">
+                    <button type="button" data-key="Home" title="Home">&#xF049;</button>
+                    <button type="button" data-key="End" title="End">&#xF050;</button>
+                    <button type="button" data-key="PageUp" title="PageUp">&#xF0D8;</button>
+                    <button type="button" data-key="PageDown" title="PageDown">&#xF0D7;</button>
+                </span>
+            </div>
+        </div>
+        <input type="text" id="f-text" class="hidden-capture">
+        <textarea id="clip-ta" class="hidden-capture"></textarea>
+    </div>
+</div>
+<script type="text/javascript" src="waf-base.js"></script>
+<script type="text/javascript" src="script.js?v=0.5.32"></script>
+<script type="text/javascript" src="snippet-overlay.js?v=0.5.32"></script>
+</body>
+</html>

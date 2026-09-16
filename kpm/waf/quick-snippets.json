@@ -1,0 +1,45 @@
+{
+  "snippets": [
+    { "label": "git status", "text": "git status --short" },
+    { "label": "git diff", "text": "git diff" },
+    { "label": "git log", "text": "git log --oneline --decorate -20" },
+    { "label": "git pull", "text": "git pull --ff-only" },
+    { "label": "git add -p", "text": "git add -p" },
+    { "label": "git branch", "text": "git branch -vv" },
+    { "label": "ls", "text": "ls -lah" },
+    { "label": "jobs", "text": "jobs" },
+    { "label": "fg", "text": "fg" },
+    {
+      "label": "Continue",
+      "text": "Continue from where you left off. Do not recap unless something is blocked."
+    },
+    {
+      "label": "Fix error",
+      "text": "Read the error in this pane and fix it. Only ask if you need a secret or a destructive choice."
+    },
+    {
+      "label": "Review diff",
+      "text": "Review the uncommitted diff. List bugs, missing tests, and anything I should not ship."
+    },
+    {
+      "label": "Write tests",
+      "text": "Add tests that cover the current change, then run them."
+    },
+    {
+      "label": "Explain",
+      "text": "Explain what this pane is showing in a few sentences."
+    },
+    {
+      "label": "Summarize",
+      "text": "Summarize the files you changed and why, then stop."
+    },
+    {
+      "label": "Next steps",
+      "text": "Propose the next three steps. Wait for me before changing more files."
+    },
+    {
+      "label": "Stop",
+      "text": "Stop. Do not change anything else. Recap where we are and what is still open."
+    }
+  ]
+}
