@@ -113,3 +113,71 @@ cross.sessionCatalog[1].unavailable=true;
 context.jumpToAgent('devbox','same-session','same-tab','same-pane');
 assert.equal(sent.length,before+1,'a now-unavailable target must not be selected');
 console.log('WAF cross-host agents: host-scoped names/IDs, offline/empty states, quiet loading and atomic routing OK');
+
+elements['win-menu'] = { style: { display: 'none' }, innerHTML: '' };
+elements['menu-title'] = { innerHTML: '' };
+elements['session-chip'] = { className: '' };
+elements['f-text'] = { blur: function () {} };
+elements['menu-group-hosts'] = { className: '', setAttribute: function () {} };
+elements['menu-group-sessions'] = { className: '', setAttribute: function () {} };
+elements['menu-group-panes'] = { className: '', setAttribute: function () {} };
+elements['menu-group-agents'] = { className: '', setAttribute: function () {} };
+context.pokeScreen = function () {};
+
+var jump = {
+    connected: true, activeHost: 'devbox', session: 's1',
+    hosts: [{ id: 'devbox', name: 'Devbox' }, { id: 'work', name: 'Work' }],
+    sessionNames: { s1: 'api' }, tabNames: { t1: 'shell', t2: 'review' },
+    panes: ['P s1 t1 p-shell 0 fish [80x24] 1'],
+    sessionCatalog: [
+        { machine: 'devbox', sessions: [{ id: 's1', name: 'api' }],
+            tabs: [{ id: 't1', name: 'shell' }, { id: 't2', name: 'review' }],
+            agent_panes: [
+                { id: 'p-review', session: 's1', tab: 't2',
+                    agent: { name: 'codex', state: 'blocked' } },
+                { id: 'p-other', session: 's1', tab: 't2',
+                    agent: { name: 'claude', state: 'working' } }
+            ] },
+        { machine: 'work', sessions: [{ id: 's2', name: 'svc' }],
+            tabs: [{ id: 't9', name: 'ask' }],
+            agent_panes: [
+                { id: 'p-ask', session: 's2', tab: 't9',
+                    agent: { name: 'grok', state: 'blocked' } }
+            ] }
+    ]
+};
+context.lastData = jump;
+assert.equal(context.blockedAgentEntries(jump).length, 2);
+assert.deepEqual(context.connectionChip(jump, 0),
+    { text: 'Needs input \u00b7 2', cls: 'state-blocked', hidden: false, jump: true });
+assert.equal(context.connectionChip({ connected: true }, 0).text, 'Live');
+assert.equal(context.connectionChip({ connected: true }, 12).text, 'Live \u00b7 12 back');
+assert.equal(context.connectionChip({ connected: false, copyMode: false }, 0).text, 'Offline');
+assert.equal(context.connectionChip({ connected: true, copyMode: true }, 0).text, 'Copy');
+
+sent = [];
+assert(context.jumpToBlockedAgent());
+assert.deepEqual(JSON.parse(JSON.stringify(sent.pop())),
+    { op: 'pane', session: 's1', win: 't2', id: 'p-review', expected_machine: 'devbox' });
+assert(!sent.some(function (op) { return op.op === 'text' || op.op === 'key'; }));
+
+jump.panes = ['P s1 t2 p-review 0 codex [80x24] 1'];
+jump.session = 's1';
+sent = [];
+assert(context.jumpToBlockedAgent());
+assert.deepEqual(JSON.parse(JSON.stringify(sent.pop())),
+    { op: 'host_pane', id: 'work', session: 's2', tab: 't9', pane: 'p-ask' });
+
+jump.sessionCatalog[1].agent_panes = [];
+jump.panes = ['P s1 t2 p-review 0 codex [80x24] 1'];
+sent = [];
+context.menuGroup = 'sessions';
+assert(context.jumpToBlockedAgent());
+assert.equal(context.menuGroup, 'agents',
+    'the only blocked pane opens the Agents list instead of sending input');
+assert(!sent.some(function (op) { return op.op === 'pane' || op.op === 'host_pane'; }));
+
+assert.equal(context.blockedAgentEntries({ connected: true, sessionCatalog: [] }).length, 0);
+context.lastData = { connected: true, sessionCatalog: [] };
+assert(!context.jumpToBlockedAgent());
+console.log('WAF jump-to-blocked-agent: chip, cycle, list fallback and no input OK');

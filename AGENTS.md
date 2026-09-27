@@ -127,10 +127,12 @@ package version, and WAF cache-busting URLs. `just package <x.y.z>` performs
 the package version/cache update.
 
 For a developer sideload, copy `dist/kmux_*_kindlehf.kpkg` to
-`/mnt/us/tmp/`, unpack it under
-`/mnt/us/kmc/kpm/packages/kmux/`, and run its `install.sh`. Reopen the WAF
-after installation. Preserve the user’s `var/` directory and do not expose
-proxy tokens in logs, screenshots, API responses, or documentation examples.
+`/mnt/us/tmp/`, unpack it directly under
+`/mnt/us/kmc/kpm/packages/kmux/` without stripping path components, and run
+its `install.sh`. The archive has a mixed layout: WAF and installer files are
+at its root, while the daemon is under `kmux/`. Reopen the WAF after
+installation. Preserve the user’s `var/` directory and do not expose proxy
+tokens in logs, screenshots, API responses, or documentation examples.
 
 See [`docs/architecture.md`](docs/architecture.md),
 [`docs/installation.md`](docs/installation.md), and

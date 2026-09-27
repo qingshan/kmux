@@ -44,6 +44,12 @@ that address.
 
 ## Configuration
 
+Configuration loading and validation live in `src/config.rs`. `src/main.rs`
+owns startup and shares the loaded configuration across connection threads.
+`src/http.rs` owns HTTP framing, authentication, and API routing, while
+`src/pty.rs` owns terminal allocation and child process startup. Backend
+selection and actions remain in `src/unified.rs` and `src/backend.rs`.
+
 ```json
 {
   "token": "shared-secret",

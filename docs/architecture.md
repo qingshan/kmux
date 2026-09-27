@@ -22,6 +22,12 @@ history, file-list parsing, and WAF-facing status. The WAF never performs a
 synchronous RPC: it sends a JSON command through the LIPC `cmd` property and
 reads `/var/local/mesquite/kmux/status.json` on its refresh loop.
 
+The daemon entry point manages process startup and shutdown. Its
+`src/bin/daemon/` modules separate LIPC service ownership, serialized command
+dispatch, status publication, and polling/button workers. Proxy HTTP requests
+and stale-host recovery live in the library's `src/proxy.rs`, where they can
+be tested on the host without linking Kindle `liblipc`.
+
 The WAF is deliberately compatible with the Kindle’s old Mesquite WebKit:
 JavaScript is ES5 and layout uses CSS2-era techniques. Terminal updates repaint
 dirty rows, and only one overlay is shown at a time. Touches that must activate

@@ -18,6 +18,9 @@ pub struct Status {
     pub scroll_offset: usize,
     #[serde(default)]
     pub scroll_revision: u64,
+    /// Reported terminal page size; the taller Read view does not increase it.
+    #[serde(default = "default_scroll_page")]
+    pub scroll_page: usize,
     pub windows: Vec<String>,
     pub panes: Vec<String>,
     pub sessions: Vec<String>,
@@ -76,6 +79,10 @@ pub struct HostInfo {
     pub name: String,
 }
 
+fn default_scroll_page() -> usize {
+    24
+}
+
 impl Default for Status {
     fn default() -> Self {
         Self {
@@ -91,6 +98,7 @@ impl Default for Status {
             scrollback: Vec::new(),
             scroll_offset: 0,
             scroll_revision: 0,
+            scroll_page: default_scroll_page(),
             windows: Vec::new(),
             panes: Vec::new(),
             sessions: Vec::new(),

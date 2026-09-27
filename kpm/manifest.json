@@ -6,8 +6,8 @@
   "description": "View and drive a remote tmux session from the Kindle",
   "version": [
     0,
-    5,
-    32
+    6,
+    0
   ],
   "dependencies": [],
   "supported_platforms": [

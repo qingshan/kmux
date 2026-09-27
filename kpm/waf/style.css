@@ -19,6 +19,9 @@ html, body {
     color: #000;
     background: #fff;
 }
+html {
+    height: 100%;
+}
 
 /* Invisible capture input: the terminal-tap keyboard flow focuses it to
    summon the on-screen keyboard; it must stay focusable, so move it off
@@ -96,6 +99,10 @@ button, input, textarea, pre, h1, .page, .top, .tabs, .view, .keys, .buttons, .f
     background: #fff;
     color: #444;
     border-style: dashed;
+}
+.state-blocked {
+    background: #000;
+    color: #fff;
 }
 
 .tabs {
@@ -201,6 +208,36 @@ button.active:active {
        Relative: anchors the overlaid status badge. */
     position: relative;
     margin: 0 0.15em 0 0.15em;
+}
+/* Reading mode drops the typing chrome and the on-screen keyboard so
+   the 80-column grid can show more local history. Keep the Scroll row
+   (paging + search). Cell size stays width-bound; do not enlarge glyphs
+   or the last columns clip. */
+body.reading .kb-stabs,
+body.reading .kb-toolbar {
+    display: none;
+}
+body.reading .kb-shortcuts {
+    margin: 0;
+}
+html.reading, body.reading {
+    height: 100%;
+    overflow: hidden;
+}
+body.reading .page {
+    height: 100%;
+    overflow: hidden;
+}
+body.reading .kb-chrome {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 5;
+    margin: 0;
+    padding: 0.2em 0.15em;
+    border-top: 1px solid #000;
+    background: #fff;
 }
 .term-wrap {
     border: 1px solid #000;
@@ -319,6 +356,13 @@ button.active:active {
 }
 .kb-panel-wrap {
     white-space: nowrap;
+}
+/* Agent replies plus slash commands wrap; do not clip Yes/No off-screen. */
+#panel-prompt {
+    white-space: normal;
+}
+#panel-prompt button {
+    margin-bottom: 0.12em;
 }
 .kb-panel button, .kb-search {
     font-family: "JBMonoNerd", "NotoEmoji", monospace;

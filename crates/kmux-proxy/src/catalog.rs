@@ -1,5 +1,5 @@
 //! Background, read-only discovery never switches the active backend or pane.
-use crate::{backend, Config};
+use crate::{backend, config::Config};
 use kmuxd::api::MachineSessions;
 use std::{
     collections::HashMap,

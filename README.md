@@ -75,16 +75,24 @@ and rollback notes.
 
 Tap the session chip to switch Hosts, Sessions, Panes, or Agents. Search is
 scoped to the selected group. Tap tabs to switch windows, or open the tab menu
-for tab actions and existing-pane navigation.
+for tab actions and existing-pane navigation. When an agent needs input, the
+terminal badge says **Needs input**; tap it to jump to that pane (or the next
+blocked pane). It never sends keystrokes.
 
 The lower controls provide:
 
 - **Scroll** — local history, page navigation, and search.
-- **Prompt** — context-aware control keys.
-- **Tools → Files** — insert a path from the selected pane’s working directory.
+- **Prompt** — context-aware control keys. On an agent pane this includes
+  **y**, **n**, **1**/**2**/**3**, and **Continue**; each tap sends that reply
+  plus Enter. It never auto-approves.
+- **Tools → Files** — choose a path from the selected pane’s working directory.
+  It loads into compose so you can edit it before sending. Directories open.
 - **Tools → Paste** — clipboard history from compose and copy-mode yanks.
 - **Tools → Snippets** — load a packaged command or prompt into compose.
-- **Tools → Agents** — inspect agent state across configured hosts.
+- **Tools → Read** or the **Read** control next to Settings — hide the typing
+  chrome and on-screen keyboard, keep paging/search, and show more local
+  history in the extra space. The remote pane stays 80×24. Page-turn buttons
+  and swipes still scroll. Tap **Read** again to type.
 
 Double-tap the terminal to compose longer or multiline text. Enter sends the
 draft plus Enter; Shift+Enter adds a line; the send icon sends without Enter.

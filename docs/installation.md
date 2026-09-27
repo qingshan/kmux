@@ -15,7 +15,7 @@ Install the cross-toolchain once, then build a versioned package:
 
 ```sh
 just toolchain
-just package 0.5.32
+just package 0.6.0
 ```
 
 The artifact is written to `dist/kmux_<version>_kindlehf.kpkg`. Build and
@@ -37,7 +37,7 @@ developer SSH sideload, the repository’s package layout can be refreshed with:
 ```sh
 scp dist/kmux_<version>_kindlehf.kpkg kindle:/mnt/us/tmp/
 ssh kindle 'tar xzf /mnt/us/tmp/kmux_<version>_kindlehf.kpkg \
-  -C /mnt/us/kmc/kpm/packages/kmux --strip-components=1'
+  -C /mnt/us/kmc/kpm/packages/kmux'
 ssh kindle 'cd /mnt/us/kmc/kpm/packages/kmux && sh ./install.sh'
 ```
 

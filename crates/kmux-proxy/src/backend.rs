@@ -1,5 +1,5 @@
 //! Backend adapters own all tmux commands and Herdr socket requests.
-use crate::{hosts::Host, Config};
+use crate::{config::Config, hosts::Host};
 use kmuxd::api::{Backend, Pane, Selection, Session, Tab};
 use kmuxd::tmux_keys::tmux_quote as quote;
 use serde_json::{json, Value};
@@ -74,7 +74,7 @@ impl Link {
             Box<dyn std::io::Read + Send>,
             bool,
         ) = if host.backend == Backend::Tmux {
-            let (child, fd) = crate::spawn_tmux(cfg, host)?;
+            let (child, fd) = crate::pty::spawn_tmux(cfg, host)?;
             let file = unsafe { std::fs::File::from_raw_fd(fd) };
             let read = file.try_clone().map_err(|e| e.to_string())?;
             (child, Box::new(file), Box::new(read), true)
@@ -252,7 +252,7 @@ impl Link {
         let Some(host) = self.herdr_host.clone() else {
             return;
         };
-        if let Ok((child, master)) = crate::spawn_herdr_ui(&host, self.cols, self.rows) {
+        if let Ok((child, master)) = crate::pty::spawn_herdr_ui(&host, self.cols, self.rows) {
             self.herdr_ui = Some((child, master));
         }
     }

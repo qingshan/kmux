@@ -4,6 +4,7 @@ var fs = require('fs');
 var vm = require('vm');
 var markup = fs.readFileSync('kpm/waf/index.html', 'utf8');
 assert(/<button[^>]*data-act="files"[^>]*id="btn-files"[^>]*>Files<\/button>/.test(markup));
+assert(/<button[^>]*data-act="read"[^>]*id="btn-read"[^>]*>Read<\/button>/.test(markup));
 var elements = {};
 var timers = [];
 var sent = [];

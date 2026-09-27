@@ -503,7 +503,7 @@ def storyboard():
              setup=lambda device: device.cmd({"op": "scroll_to", "offset": 0}),
              gesture=taps("panel_prompt"),
              detail="Keys for the program in the pane, not a generic keyboard."),
-        dict(label="07-files", caption="Tools: insert a file path", dwell=3000,
+        dict(label="07-files", caption="Tools: choose a file for compose", dwell=3000,
              setup=lambda device: device.cmd({"op": "list_files", "path": "/tmp"}),
              gesture=taps("panel_tools") + taps("tools_files"),
              wait=lambda s: bool(s.get("cwd")),
@@ -538,7 +538,8 @@ def storyboard():
              detail="Jump directly to any pane across every machine."),
         dict(label="15-agents", caption="Agents group: who needs you", dwell=3000,
              gesture=taps("menu_close") + taps("session_chip") + taps("menu_group_agents"),
-             detail="Badges show Needs input, Working, Done, Idle across all hosts."),
+             detail="Badges show Needs input, Working, Done, Idle across all hosts. "
+                    "Tap the Needs input chip to jump to that pane."),
         dict(label="16-agent-search", caption="Search agents by host or state", dwell=3000,
              gesture=taps("menu_close") + taps("session_chip") + taps("menu_group_agents")
              + taps("menu_search") + type_text("codex"),

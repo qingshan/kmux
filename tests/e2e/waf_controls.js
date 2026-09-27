@@ -117,7 +117,8 @@ assert(/id="btn-compose-cancel"[^>]*aria-label="Close without sending"[^>]*><spa
 var clipboardOpens = 0;
 var scrollOffsets = [];
 context.showPastePop = function () { clipboardOpens++; };
-context.scrollToOffset = function (offset) { scrollOffsets.push(offset); };
+context.scrollToOffset = function (offset) { scrollOffsets.push(offset); context.viewOffset = offset; };
+term.getElementsByTagName = function () { return [{rows:[{offsetHeight:10}]}]; };
 context.lastData = { rows:24, scrollback:new Array(80), copyMode:false };
 context.viewOffset = 0;
 ['touchstart','mousedown'].forEach(function (kind) {
@@ -128,7 +129,16 @@ context.viewOffset = 0;
     fire(doc,'mousemove',null,false,130); flush();
 });
 assert.equal(clipboardOpens,0,'holding or slowly scrolling must never open clipboard history');
-assert.deepEqual(scrollOffsets,[24,24],'touch and mouse scrolling still page through history');
+assert.deepEqual(scrollOffsets,[3,6],'touch and mouse drags follow finger distance in rows');
+fire(doc,'mousemove',null,false,145); flush();
+assert.equal(context.viewOffset,7,'continuing a drag moves another row');
+fire(doc,'mousemove',null,false,115); flush();
+assert.equal(context.viewOffset,4,'reversing a drag returns toward its start');
+context.viewOffset = 0;
+context.scrollPageUp();
+assert.equal(context.viewOffset,24,'Oasis page-up advances a terminal page');
+context.scrollUp();
+assert.equal(context.viewOffset,25,'on-screen up advances one row');
 
 context.pendingRestore = null;
 context.switchPending = false;

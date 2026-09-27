@@ -38,3 +38,8 @@ demo-build:
 # Usage: just package [version]
 package version="": toolchain
     ./tools/pkg-build.sh {{version}}
+
+# Build and publish the package to the shared KPM catalog.
+# Requires KINDLE_CATALOG_TOKEN when the catalog remote uses HTTPS.
+publish version="": toolchain
+    ./tools/publish.sh {{version}}

@@ -32,7 +32,8 @@ Agent checks cover real Herdr fixture state reports and exact pane selection,
 per-pane status subscriptions, all five states, session/tab rollups, and clearing
 badges when an agent exits. No real coding agent is launched or prompted.
 
-`just test` also runs host-side Rust tests and JavaScript WAF routing/snippet tests.
+`just test` also runs host-side Rust tests and JavaScript WAF routing, snippet,
+file-picker, prompt-reply, and reading-mode tests.
 Control regression tests cover compose Cancel/Escape/outside dismissal, delayed
 focus and Send callbacks, duplicate delivery, and physical-button scroll offsets
 in both directions, including returning to live view without stale-poll rollback.
@@ -49,8 +50,8 @@ own rows, with panes spanning hosts, preserve group-specific searches, and route
 Enter to the exact host or pane. It also checks nested tab taps and live refresh.
 `waf_setup.js` checks the missing-credentials startup prompt, HTTPS defaults,
 and that status refresh does not overwrite settings drafts or expose the token.
-Agent WAF tests cover escaped labels, badges, filtering, exact pane routing and
-stale-machine rejection. Rust tests cover conservative tmux command detection,
+Agent WAF tests cover escaped labels, badges, filtering, exact pane routing,
+stale-machine rejection, and one-tap jump to a blocked agent. Rust tests cover conservative tmux command detection,
 unknown/future states, rollups, and daemon metadata propagation/clearing.
 
 `just demo` runs the host suite, then the advertising tour against `ssh outbox`

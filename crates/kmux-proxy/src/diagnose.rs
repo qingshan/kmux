@@ -2,7 +2,7 @@
 //!
 //! Diagnose never attaches to a pane or replaces the active backend: SSH and
 //! inventory probes run on their own connections, in parallel.
-use crate::{backend, hosts::Host, Config};
+use crate::{backend, config::Config, hosts::Host};
 use kmuxd::api::{
     Backend, DiagnoseCheck, DiagnoseReport, HostDiagnose, Machine, Selection, Snapshot, VERSION,
 };

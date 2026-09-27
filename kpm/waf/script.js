@@ -63,10 +63,14 @@ var renderTimer = null; /* e-ink can't repaint per-mousemove: throttle */
 var lastPaintedRows = []; /* previous <tr> HTML, for in-place row patches */
 var lastPaintedCols = 0;
 var lastWinSig = ""; /* skip rewriting the window-tab strip when unchanged */
-var lastInputAt = 0; /* last key/text: suppress the periodic list-windows */
+var lastInputAt = 0; /* most recent terminal input */
 var expectChangeFrom = null; /* visibleSig before an input; ignore stale polls */
 var expectChangeUntil = 0;
-var pokeSeq = 0; /* incrementing id so a newer key cancels older pokes */
+var pokeTimer = null;
+var pokeRemaining = 0;
+var rowCache = {};
+var rowCacheKeys = [];
+var rowCacheNext = 0;
 var lastStateText = "";
 var lastStateClass = "";
 var lastStateHidden = false; /* plain "Live": badge overlay is hidden */
@@ -373,26 +377,20 @@ function visibleSig(data) {
         (data.screen ? data.screen.join("\n") : "");
 }
 
-/* After a key, poll a few times across the SOCKS5 round-trip instead of
-   waiting up to 2.5s for the background interval. */
+/* One refresh chain per input burst. New keys extend the chain without
+   postponing a pending read or allocating six timers per keystroke. */
 function pokeScreen() {
-    pokeSeq += 1;
-    var seq = pokeSeq;
-    function later(ms) {
-        setTimeout(function () {
-            if (seq === pokeSeq) {
-                fetchStatusJson();
-            }
-        }, ms);
+    pokeRemaining = 6;
+    if (pokeTimer !== null) { return; }
+    function tick() {
+        pokeTimer = null;
+        fetchStatusJson();
+        pokeRemaining -= 1;
+        if (pokeRemaining > 0) {
+            pokeTimer = setTimeout(tick, pokeRemaining > 3 ? 180 : 400);
+        }
     }
-    later(70);
-    later(180);
-    later(350);
-    later(600);
-    /* new-window: the shell prompt often lands after the first capture
-       (which is blank) — keep polling until it shows. */
-    later(1000);
-    later(1800);
+    pokeTimer = setTimeout(tick, 70);
 }
 
 /* Patch dirty <tr>s in place. A full innerHTML of 80x24 cells forces the
@@ -514,6 +512,18 @@ function glyphCols(ch) {
    columns so the row still fills `cols`. */
 function rowHtml(text, attrs, rowIdx, histIdx) {
     var cols = (lastData && lastData.cols) ? lastData.cols : 80;
+    var cursorAt = null;
+    if (rowIdx !== null && lastData && rowIdx === lastData.cursorY && viewOffset === 0) {
+        cursorAt = lastData.cursorX;
+        if (cursorAt < 0 || cursorAt >= cols) {
+            cursorAt = null;
+        }
+    }
+    var cacheKey = JSON.stringify([cols, text, attrs || "", cursorAt,
+        searchNeedle, histIdx === cmdHistIdx]);
+    if (Object.prototype.hasOwnProperty.call(rowCache, cacheKey)) {
+        return rowCache[cacheKey];
+    }
     var cells = scalars(text);
     while (cells.length < cols) {
         cells.push(" ");
@@ -527,13 +537,6 @@ function rowHtml(text, attrs, rowIdx, histIdx) {
     }
     a = a.substring(0, cols);
 
-    var cursorAt = null;
-    if (rowIdx !== null && lastData && rowIdx === lastData.cursorY && viewOffset === 0) {
-        cursorAt = lastData.cursorX;
-        if (cursorAt < 0 || cursorAt >= cols) {
-            cursorAt = null;
-        }
-    }
     var hits = hitCells(text, searchNeedle);
     if (histIdx === cmdHistIdx) {
         var cmdHits = promptCmdHits(text);
@@ -570,7 +573,15 @@ function rowHtml(text, attrs, rowIdx, histIdx) {
         tds.push(termTd("", "\u00a0", 1));
         used += 1;
     }
-    return "<tr>" + tds.join("") + "</tr>";
+    var html = "<tr>" + tds.join("") + "</tr>";
+    // Bound memory to two maximum-height views, including rows just scrolled off.
+    if (rowCacheKeys.length === 144) {
+        delete rowCache[rowCacheKeys[rowCacheNext]];
+    }
+    rowCacheKeys[rowCacheNext] = cacheKey;
+    rowCacheNext = (rowCacheNext + 1) % 144;
+    rowCache[cacheKey] = html;
+    return html;
 }
 
 function fillTermHtmlRows(htmlRows, nrows) {
@@ -588,6 +599,64 @@ function fillTermHtmlRows(htmlRows, nrows) {
 
 function paintFullGrid(htmlRows, cols, nrows) {
     paintScreen(fillTermHtmlRows(htmlRows, nrows || 24), cols || 80);
+}
+
+function collectTermHtmlRows(data, paintOff, rows, attrs, sb) {
+    var live = rows.length || 24;
+    var viewRows = viewportRows(data);
+    var htmlRows = [];
+    var i;
+    if (paintOff > sb.length) {
+        paintOff = sb.length;
+    }
+    if (paintOff === 0) {
+        /* Live view: skip reversing the full 500-line scrollback. Reading
+           mode only prepends the extra visible history above the live
+           80x24, without resizing the remote pane. */
+        if (viewRows > live && sb.length) {
+            var extra = Math.min(viewRows - live, sb.length);
+            var prefix = sb.slice(0, extra).reverse();
+            var base = sb.length - extra;
+            for (i = 0; i < prefix.length; i++) {
+                var histText = prefix[i] || "";
+                if (histText.indexOf("KMUXCURSOR") !== -1) {
+                    histText = "";
+                }
+                var ha = histText ? new Array(histText.length + 1).join(".") : "";
+                htmlRows.push(rowHtml(histText, ha, null, base + i));
+            }
+        }
+        for (i = 0; i < rows.length; i++) {
+            var liveText = rows[i] || "";
+            if (liveText.indexOf("KMUXCURSOR") !== -1) {
+                liveText = "";
+            }
+            htmlRows.push(rowHtml(liveText, attrs[i] || "", i, sb.length + i));
+        }
+    } else {
+        /* History in display order: scrolled-out lines (oldest first) then
+           the live screen. Show EXACTLY `viewRows` rows — a window into the
+           history — so the terminal box never grows when paging. */
+        var total = sb.length + rows.length;
+        var hist = sb.slice().reverse().concat(rows);
+        var endIdx = total - paintOff;
+        var startIdx = Math.max(0, endIdx - viewRows);
+        var screenStart = Math.max(startIdx, total - live);
+        for (i = startIdx; i < endIdx; i++) {
+            var isScreen = i >= screenStart;
+            var idx = isScreen ? (i - (total - live)) : null;
+            var a = isScreen ? (attrs[idx] || "") : "";
+            var rowText = hist[i] || "";
+            if (rowText.indexOf("KMUXCURSOR") !== -1) {
+                rowText = "";
+            }
+            if (!isScreen && a.length === 0 && rowText) {
+                a = new Array(rowText.length + 1).join(".");
+            }
+            htmlRows.push(rowHtml(rowText, a, idx, i));
+        }
+    }
+    return fillTermHtmlRows(htmlRows, viewRows);
 }
 
 function safeRender(data) {
@@ -732,29 +801,25 @@ function render(data) {
     /* The chip reports the same (clamped) offset the terminal renders. A
        plain "Live" (connected, live screen, no alt screen) needs no badge,
        so the overlay is hidden then and only appears for Offline /
-       Connecting… / Alt / scrolled-back states. */
-    var st = data.connected
-        ? (data.copyMode ? "Copy" : (data.altScreen ? "Alt" : "Live"))
-        : "Offline";
-    if (viewOffset > 0) {
-        st += " \u00b7 " + viewOffset + " back";
-    }
-    var stClass = data.connected ? "state-ok" : "state-error";
-    var stHidden = st === "Live";
-    if (st !== lastStateText || stClass !== lastStateClass ||
-            stHidden !== lastStateHidden) {
-        lastStateText = st;
-        lastStateClass = stClass;
-        lastStateHidden = stHidden;
+       Connecting… / Alt / scrolled-back / needs-input states. */
+    var chip = connectionChip(data, viewOffset);
+    if (chip.text !== lastStateText || chip.cls !== lastStateClass ||
+            chip.hidden !== lastStateHidden) {
+        lastStateText = chip.text;
+        lastStateClass = chip.cls;
+        lastStateHidden = chip.hidden;
         var stateEl = byId("state");
-        if (stHidden) {
+        if (chip.hidden) {
             if (stateEl) {
                 stateEl.style.display = "none";
+                stateEl.title = "Connection status";
             }
         } else {
-            setState(st, stClass);
+            setState(chip.text, chip.cls);
             if (stateEl) {
                 stateEl.style.display = "";
+                stateEl.title = chip.jump ?
+                    "Jump to agent that needs input" : "Connection status";
             }
         }
     }
@@ -785,8 +850,6 @@ function render(data) {
     }
 
     var cols = data.cols || 80;
-    var htmlRows = [];
-    var i;
     /* Keep the last 80x24 while switch/create/close has wiped the model
        and the destination capture has not arrived. Painting that empty
        snapshot collapsed the table or flashed a blank pane. */
@@ -812,43 +875,8 @@ function render(data) {
     if (paintOff > sb.length) {
         paintOff = sb.length;
     }
-    if (paintOff === 0) {
-        /* Live view: do not copy/reverse the 500-line scrollback. */
-        for (i = 0; i < rows.length; i++) {
-            var liveText = rows[i] || "";
-            if (liveText.indexOf("KMUXCURSOR") !== -1) {
-                liveText = "";
-            }
-            htmlRows.push(rowHtml(liveText, attrs[i] || "", i, sb.length + i));
-        }
-    } else {
-        /* History in display order: scrolled-out lines (oldest first) then
-           the live screen. Show EXACTLY `rows` rows — a window into the
-           history — so the terminal box never grows when paging. */
-        var total = sb.length + rows.length;
-        var hist = sb.slice().reverse().concat(rows);
-        var endIdx = total - paintOff;
-        var startIdx = Math.max(0, endIdx - rows.length);
-        var screenStart = Math.max(startIdx, total - rows.length);
-        for (i = startIdx; i < endIdx; i++) {
-            var isScreen = i >= screenStart;
-            var idx = isScreen ? (i - (total - rows.length)) : null;
-            var a = isScreen ? (attrs[idx] || "") : "";
-            /* The daemon's cursor query ("KMUXCURSOR x y") can leak into the
-               screen during a window close race — never render it. */
-            var rowText = hist[i] || "";
-            if (rowText.indexOf("KMUXCURSOR") !== -1) {
-                rowText = "";
-            }
-            /* Scrollback rows are plain text — rowHtml needs a matching-length
-               attrs string (all normal cells) or it renders nothing. */
-            if (!isScreen && a.length === 0 && rowText) {
-                a = new Array(rowText.length + 1).join(".");
-            }
-            htmlRows.push(rowHtml(rowText, a, idx, i));
-        }
-    }
-    paintFullGrid(htmlRows, cols, rows.length || 24);
+    paintFullGrid(collectTermHtmlRows(data, paintOff, rows, attrs, sb),
+        cols, viewportRows(data));
 
     if (menuOpen) {
         renderWindowMenu(data);
@@ -1015,6 +1043,54 @@ function agentEntries(data) {
         }
     }
     return rows;
+}
+
+function blockedAgentEntries(data) {
+    var rows = agentEntries(data || {});
+    var out = [];
+    var i;
+    for (i = 0; i < rows.length; i++) {
+        if (rows[i].agents && rows[i].agents.state === "blocked") {
+            out.push(rows[i]);
+        }
+    }
+    return out;
+}
+
+function connectionChip(data, offset) {
+    var connected = !!(data && data.connected);
+    var blockedN = 0;
+    var st;
+    var stClass;
+    offset = offset || 0;
+    if (!connected) {
+        st = "Offline";
+        stClass = "state-error";
+    } else if (data.copyMode) {
+        st = "Copy";
+        stClass = "state-ok";
+    } else if (data.altScreen) {
+        st = "Alt";
+        stClass = "state-ok";
+    } else {
+        blockedN = blockedAgentEntries(data).length;
+        if (blockedN) {
+            st = blockedN === 1 ? "Needs input" : ("Needs input \u00b7 " + blockedN);
+            stClass = "state-blocked";
+        } else {
+            st = "Live";
+            stClass = "state-ok";
+        }
+        if (offset > 0) {
+            st += " \u00b7 " + offset + " back";
+        }
+    }
+    return {
+        text: st,
+        cls: stClass,
+        hidden: st === "Live",
+        jump: blockedN > 0
+    };
 }
 
 var menuGroup = "sessions";
@@ -1251,12 +1327,10 @@ function jumpToHostSession(host, session) {
     showView("view");
 }
 
-/* Scrollback paging is owned by the WAF over the captured history,
-   except in tmux copy mode: then page keys go to the pane (send-keys -X)
-   and the daemon shows capture-pane -M. Live is scrollBottom (or paging
-   down to offset 0); in copy mode that cancels the mode. */
-function scrollPage() {
-    return (lastData && lastData.rows) ? lastData.rows : 24;
+/* The on-screen arrows move one row. Oasis page buttons move the remote
+   terminal height; copy mode keeps its tmux-native movement. */
+function scrollStep() {
+    return 1;
 }
 
 function scrollMax() {
@@ -1268,7 +1342,7 @@ function scrollUp() {
         sendCmd({ op: "key", key: "ScrollUp" });
         return;
     }
-    scrollToOffset(Math.min(scrollMax(), viewOffset + scrollPage()));
+    scrollToOffset(Math.min(scrollMax(), viewOffset + scrollStep()));
 }
 
 function scrollDown() {
@@ -1276,7 +1350,23 @@ function scrollDown() {
         sendCmd({ op: "key", key: "ScrollDown" });
         return;
     }
-    scrollToOffset(Math.max(0, viewOffset - scrollPage()));
+    scrollToOffset(Math.max(0, viewOffset - scrollStep()));
+}
+
+function scrollPageUp() {
+    if (lastData && lastData.copyMode) {
+        sendCmd({ op: "key", key: "ScrollUp" });
+        return;
+    }
+    scrollToOffset(Math.min(scrollMax(), viewOffset + terminalPageRows()));
+}
+
+function scrollPageDown() {
+    if (lastData && lastData.copyMode) {
+        sendCmd({ op: "key", key: "ScrollDown" });
+        return;
+    }
+    scrollToOffset(Math.max(0, viewOffset - terminalPageRows()));
 }
 
 function scrollBottom() {
@@ -1320,6 +1410,9 @@ function beginPaneSwitch() {
    the VKB. */
 var kbPanel = "scroll";
 var kbWanted = true;
+var readingMode = false;
+var readingLayoutTimer = null;
+var readingLayoutPasses = 0;
 var modCtrl = false;
 var modAlt = false;
 var promptRulesFile = null;
@@ -1366,6 +1459,10 @@ function otherInputFocused() {
 /* Keep the Kindle keyboard up by holding focus on #f-text, unless the
    user is typing in settings / window search / chrome search. */
 function holdVkb() {
+    if (readingMode) {
+        kbWanted = false;
+        return;
+    }
     kbWanted = true;
     if (composeVisible() || otherInputFocused()) {
         return;
@@ -1391,6 +1488,139 @@ function showKbChrome() {
 function hideKbChrome() {
     clearMods();
     holdVkb();
+}
+
+function viewportRows(data) {
+    var live = (data && data.rows) ? data.rows : 24;
+    if (!readingMode || !data || data.copyMode || data.altScreen) {
+        return live;
+    }
+    return readingViewportRows(live);
+}
+
+function readingViewportRows(liveRows) {
+    var area = byId("term-area");
+    var wrap = byId("term");
+    var chrome = byId("kb-chrome");
+    var table = wrap && wrap.getElementsByTagName ?
+        wrap.getElementsByTagName("table")[0] : null;
+    var top = area && typeof area.offsetTop === "number" ? area.offsetTop : 0;
+    var chromeHeight = chrome && chrome.offsetHeight ? chrome.offsetHeight : 0;
+    var avail = (typeof window !== "undefined" && window.innerHeight) ?
+        (window.innerHeight - top - chromeHeight) : 0;
+    var rowH = 0;
+    if (table && table.rows && table.rows.length && table.rows[0].offsetHeight) {
+        rowH = table.rows[0].offsetHeight;
+    }
+    if (avail < 1 || rowH < 1) {
+        return liveRows;
+    }
+    var n = Math.floor(avail / rowH);
+    if (n < liveRows) {
+        return liveRows;
+    }
+    if (n > 72) {
+        return 72;
+    }
+    return n;
+}
+
+function setReadingMode(on) {
+    on = !!on;
+    if (readingMode === on) {
+        paintReadingChrome();
+        return;
+    }
+    readingMode = on;
+    lastPaintedRows = [];
+    lastPaintedCols = 0;
+    if (readingMode) {
+        kbWanted = false;
+        clearMods();
+        showPanel("scroll");
+        var field = byId("f-text");
+        if (field && document.activeElement === field && field.blur) {
+            field.blur();
+        }
+        scheduleReadingLayout();
+    } else {
+        if (readingLayoutTimer) {
+            clearTimeout(readingLayoutTimer);
+            readingLayoutTimer = null;
+        }
+        if (!composeVisible() && !otherInputFocused()) {
+            holdVkb();
+        }
+        if (lastData) {
+            safeRender(lastData);
+        }
+        syncScrollPage();
+    }
+    paintReadingChrome();
+}
+
+function toggleReadingMode() {
+    setReadingMode(!readingMode);
+}
+
+function paintReadingChrome() {
+    var body = document.body;
+    var roots = [document.documentElement, body];
+    var r;
+    for (r = 0; r < roots.length; r++) {
+        if (roots[r]) {
+            var cls = roots[r].className || "";
+            cls = cls.replace(/(^|\s)reading(\s|$)/g, " ").replace(/^\s+|\s+$/g, "");
+            roots[r].className = readingMode ? (cls ? cls + " reading" : "reading") : cls;
+        }
+    }
+    var toolsBtn = byId("btn-read");
+    var tabRead = byId("tab-read");
+    if (toolsBtn) {
+        toolsBtn.className = readingMode ? "active" : "";
+    }
+    if (tabRead) {
+        tabRead.className = "tab" + (readingMode ? " active" : "");
+    }
+}
+
+function relayoutReading() {
+    if (!readingMode) {
+        return;
+    }
+    lastPaintedRows = [];
+    lastPaintedCols = 0;
+    if (lastData) {
+        safeRender(lastData);
+    }
+    syncScrollPage();
+}
+
+function scheduleReadingLayout() {
+    readingLayoutPasses = 0;
+    if (readingLayoutTimer) {
+        clearTimeout(readingLayoutTimer);
+        readingLayoutTimer = null;
+    }
+    function pass() {
+        if (!readingMode) {
+            return;
+        }
+        relayoutReading();
+        readingLayoutPasses += 1;
+        if (readingLayoutPasses < 4) {
+            readingLayoutTimer = setTimeout(pass, readingLayoutPasses === 1 ? 200 : 400);
+        }
+    }
+    pass();
+}
+
+function terminalPageRows() {
+    return (lastData && lastData.rows > 0) ? lastData.rows : 24;
+}
+
+function syncScrollPage() {
+    sendCmd({ op: "scroll_page", rows: terminalPageRows() });
 }
 
 function showPanel(name) {
@@ -1841,7 +2071,7 @@ function selectCmd(dir) {
 
 /* `P sess win paneId paneIdx command [WxH] active` */
 function currentPaneInfo(data) {
-    var info = { cmd: "", win: "", id: "", winIdx: "" };
+    var info = { cmd: "", win: "", id: "", winIdx: "", agent: "" };
     if (!data) {
         return info;
     }
@@ -1875,7 +2105,36 @@ function currentPaneInfo(data) {
         info.cmd = p[5] || "";
         break;
     }
+    info.agent = currentPaneAgent(data, info.id);
     return info;
+}
+
+function currentPaneAgent(data, paneId) {
+    var i, j;
+    var panes;
+    if (!data || !paneId) {
+        return "";
+    }
+    panes = data.agentPanes || [];
+    for (i = 0; i < panes.length; i++) {
+        if (panes[i].id === paneId && panes[i].agent && panes[i].agent.name) {
+            return panes[i].agent.name;
+        }
+    }
+    var catalog = data.sessionCatalog || [];
+    var host = data.activeHost || "";
+    for (i = 0; i < catalog.length; i++) {
+        if (catalog[i].machine && catalog[i].machine !== host) {
+            continue;
+        }
+        panes = catalog[i].agent_panes || [];
+        for (j = 0; j < panes.length; j++) {
+            if (panes[j].id === paneId && panes[j].agent && panes[j].agent.name) {
+                return panes[j].agent.name;
+            }
+        }
+    }
+    return "";
 }
 
 function paneKey(data) {
@@ -1909,6 +2168,7 @@ function ruleMatches(rule, info) {
     var m = (rule && rule.match) ? rule.match : [];
     var cmd = ((info && info.cmd) || "").toLowerCase();
     var win = ((info && info.win) || "").toLowerCase();
+    var agent = ((info && info.agent) || "").toLowerCase();
     var i;
     for (i = 0; i < m.length; i++) {
         var t = String(m[i] || "").toLowerCase();
@@ -1922,6 +2182,9 @@ function ruleMatches(rule, info) {
             return true;
         }
         if (win === t || (win && win.indexOf(t) === 0)) {
+            return true;
+        }
+        if (agent === t || (agent && agent.indexOf(t) === 0)) {
             return true;
         }
     }
@@ -2137,6 +2400,10 @@ function wireKbChrome() {
                 keepCaptureFocus();
                 return;
             }
+            if (act === "read") {
+                afterPressFlash(toggleReadingMode);
+                return;
+            }
             if (act === "cmd-prev") {
                 selectCmd("prev");
                 return;
@@ -2289,6 +2556,31 @@ function jumpToPane(host, session, tab, pane) {
     }
 }
 
+function jumpToBlockedAgent() {
+    var blocked = blockedAgentEntries(lastData);
+    var start = 0;
+    var i;
+    if (!blocked.length) {
+        return false;
+    }
+    for (i = 0; i < blocked.length; i++) {
+        if (blocked[i].active) {
+            start = i + 1;
+            break;
+        }
+    }
+    if (start >= blocked.length) {
+        if (blocked.length === 1) {
+            openWinMenu("agents");
+            return true;
+        }
+        start = 0;
+    }
+    var target = blocked[start];
+    jumpToAgent(target.host, target.sess, target.idx, target.pane);
+    return true;
+}
+
 function jumpToAgent(host, session, tab, pane) {
     if (!lastData || !host || !session || !tab || !pane) { return; }
     var entries = agentEntries(lastData);
@@ -2310,11 +2602,11 @@ function jumpToAgent(host, session, tab, pane) {
     }
 }
 
-function openWinMenu() {
+function openWinMenu(group) {
     prepareOverlay("win-menu");
     var title = byId("menu-title");
     if (title) { title.innerHTML = "Switch to"; }
-    menuGroup = "sessions";
+    menuGroup = group || "sessions";
     menuQueries = {};
     var menu = byId("win-menu");
     if (!menu) {
@@ -2514,7 +2806,7 @@ function openFilePicker() {
     }, 0);
 }
 
-function closeFilePicker() {
+function closeFilePicker(restoreKeyboard) {
     filePickerOpen = false;
     pickerRoot = "";
     lastPickerCwd = "";
@@ -2531,7 +2823,9 @@ function closeFilePicker() {
     if (search && document.activeElement === search) {
         search.blur();
     }
-    holdVkb();
+    if (restoreKeyboard !== false) {
+        holdVkb();
+    }
 }
 
 function toggleFilePicker() {
@@ -2639,9 +2933,8 @@ function insertPickedFile(path) {
     if (!path) {
         return;
     }
-    closeFilePicker();
-    sendCmd({ op: "text", text: shellQuote(path), paste: true });
-    keepCaptureFocus();
+    closeFilePicker(false);
+    showCompose(shellQuote(path));
 }
 
 function showView(name) {
@@ -2668,22 +2961,12 @@ function startAutoRefresh() {
         clearTimeout(refreshTimer);
         refreshTimer = null;
     }
-    var lastListAt = 0;
     function tick() {
         fetchStatusJson();
-        /* list-windows is a blocking curl POST on the daemon's input
-           thread — skip it while typing so a key is not queued behind it. */
-        if (lastData && lastData.configured && Date.now() - lastInputAt > 2500 &&
-                Date.now() - lastListAt > 2500) {
-            lastListAt = Date.now();
-            sendCmd({ op: "list" });
-        }
-        /* Copy mode overlay is recaptured in the daemon; poll often enough
-           that cursor/scroll shows up on the e-ink without waiting 2.5s. */
-        // Faster local status-file reads for pushed Herdr metadata. This is
-        // still LIPC/status.json, not a browser network subscription.
+        // kmuxd already captures inventory with its background snapshots.
+        // An extra list action queues another network request ahead of input.
         var ms = (lastData && lastData.eventUpdates) ? 500 :
-            ((lastData && lastData.copyMode) ? 700 : 2500);
+            ((lastData && (lastData.connected || lastData.copyMode)) ? 750 : 2500);
         refreshTimer = setTimeout(tick, ms);
     }
     tick();
@@ -2695,6 +2978,13 @@ function startAutoRefresh() {
    the field cleared, so the VKB acts as a raw keypad. */
 function focusTerminalKeyboard() {
     if (composeVisible()) { return; }
+    if (readingMode) {
+        var search = byId("f-scroll-search");
+        if (search && document.activeElement === search && search.blur) {
+            search.blur();
+        }
+        return;
+    }
     var f = byId("f-text");
     if (f) {
         f.value = "";
@@ -2822,7 +3112,7 @@ function syncDaemonScroll(data) {
     }
 }
 /* Jump the WAF scrollback view to an exact offset (clamped). Used by
-   drag-to-page, arrows, and search; the pane itself is never touched. */
+   dragging, arrows, and search; the pane itself is never touched. */
 function scrollToOffset(offset) {
     viewOffset = Math.max(0, offset);
     lastDaemonOffset = viewOffset;
@@ -2840,9 +3130,11 @@ function wireTerminalDrag() {
         return;
     }
     var dragStartY = null;
+    var dragStartOffset = 0;
     term.addEventListener("touchstart", function (ev) {
         if (ev.touches && ev.touches.length) {
             dragStartY = ev.touches[0].clientY || 0;
+            dragStartOffset = viewOffset;
         }
         dragActive = false;
         dragMoved = false;
@@ -2862,6 +3154,7 @@ function wireTerminalDrag() {
         }
         lastTermTapAt = now;
         dragStartY = ev.clientY || 0;
+        dragStartOffset = viewOffset;
         dragActive = false;
         dragMoved = false;
         /* NO preventDefault here: on this old WebKit it suppresses the
@@ -2871,6 +3164,15 @@ function wireTerminalDrag() {
            Focusing during the mousedown itself is swallowed by the WebKit,
            so defer to the next tick; a real drag's movement blurs it. */
         setTimeout(focusTerminalKeyboard, 0);
+    });
+    document.addEventListener("mousedown", function (ev) {
+        var node = ev.target || ev.srcElement;
+        while (node && node !== document) {
+            if (node === term) { return; }
+            node = node.parentNode;
+        }
+        dragStartY = null;
+        dragActive = false;
     });
     document.addEventListener("mousemove", function (ev) {
         var pp = byId("paste-pop");
@@ -2882,29 +3184,32 @@ function wireTerminalDrag() {
             return;
         }
         var dy = dragStartY - (ev.clientY || 0);
-        /* One swipe = one screen, same as the arrows / page-turn buttons.
-           This WebKit often never sends mouseup, so disarm dragStartY after
-           the jump; the next mousedown starts a new page. */
-        if (Math.abs(dy) >= 12) {
-            hidePastePop();
-            hideSnippetPop();
-            if (lastData && lastData.copyMode) {
+        if (Math.abs(dy) < 12 && !dragActive) {
+            return;
+        }
+        hidePastePop();
+        hideSnippetPop();
+        if (lastData && lastData.copyMode) {
+            if (!dragActive && Math.abs(dy) >= 12) {
                 sendCmd({ op: "key", key: dy < 0 ? "ScrollUp" : "ScrollDown" });
-                dragStartY = null;
-                dragActive = true;
-                dragEndAt = Date.now() + 700;
-                dragMoved = true;
-                return;
             }
-            var page = (lastData && lastData.rows) ? lastData.rows : 24;
-            var max = (lastData && lastData.scrollback) ? lastData.scrollback.length : 0;
-            /* Finger down -> older history; finger up -> toward live. */
+        } else {
+            var table = term.getElementsByTagName("table")[0];
+            var rowHeight = table && table.rows && table.rows.length ?
+                table.rows[0].offsetHeight : 0;
+            var lines = Math.abs(dy) < 12 ? 0 :
+                Math.max(1, Math.floor(Math.abs(dy) / (rowHeight || 12)));
+            /* Finger down reveals older rows; finger up moves toward live. */
             var next = dy < 0 ?
-                Math.min(max, viewOffset + page) :
-                Math.max(0, viewOffset - page);
-            scrollToOffset(next);
-            dragStartY = null;
+                Math.min(scrollMax(), dragStartOffset + lines) :
+                Math.max(0, dragStartOffset - lines);
+            if (next !== viewOffset) {
+                scrollToOffset(next);
+            }
+        }
+        if (Math.abs(dy) >= 12 || dragActive) {
             dragActive = true;
+            dragMoved = true;
             dragEndAt = Date.now() + 700;
             if (ev.preventDefault) {
                 ev.preventDefault();
@@ -2973,7 +3278,7 @@ function wireTerminalKeyboard() {
 }
 
 document.addEventListener("DOMContentLoaded", function () {
-    hookChromeOnGo(KMUX_APP, "KMux");
+    hookChromeOnGo(KMUX_APP, "kmux");
     paintFullGrid([], 80, 24);
 
     sendCmd({ op: "watch_start" });
@@ -2984,14 +3289,20 @@ document.addEventListener("DOMContentLoaded", function () {
     fetchPromptRules();
     fetchQuickSnippets();
     holdVkb();
-    window.addEventListener("resize", holdVkb);
+    window.addEventListener("resize", function () {
+        if (readingMode) {
+            relayoutReading();
+            return;
+        }
+        holdVkb();
+    });
     document.addEventListener("mousedown", function (ev) {
         flashPressed(closestButton(ev.target || ev.srcElement));
     });
     /* Tap the terminal screen: keyboard up, typing goes straight to tmux —
        unless the tap was the tail of a drag-to-scroll gesture. */
     byId("term").addEventListener("click", function () {
-        if (dragActive && Date.now() < dragEndAt) {
+        if (dragMoved && Date.now() < dragEndAt) {
             dragActive = false;
             return; /* a drag just ended — don't pop the keyboard */
         }
@@ -3007,12 +3318,12 @@ document.addEventListener("DOMContentLoaded", function () {
     document.addEventListener("keydown", function (ev) {
         var k = ev.keyCode || ev.which;
         if (k === 33) {
-            scrollUp();
+            scrollPageUp();
             if (ev.preventDefault) { ev.preventDefault(); }
             return false;
         }
         if (k === 34) {
-            scrollDown();
+            scrollPageDown();
             if (ev.preventDefault) { ev.preventDefault(); }
             return false;
         }
@@ -3025,10 +3336,21 @@ document.addEventListener("DOMContentLoaded", function () {
             afterPressFlash(function () { showView(next); });
         });
     }
-    /* Tapping the status chip toggles the error popup under it. */
+    var readButton = byId("tab-read");
+    if (readButton) {
+        readButton.addEventListener("mousedown", function () {
+            afterPressFlash(toggleReadingMode);
+        });
+    }
+    /* Tapping the status chip jumps to a blocked agent when the chip
+       says Needs input; otherwise it toggles the error popup. */
     byId("state").addEventListener("mousedown", function (ev) {
         if (ev.preventDefault) {
             ev.preventDefault();
+        }
+        if (lastStateText.indexOf("Needs input") === 0) {
+            afterPressFlash(function () { jumpToBlockedAgent(); });
+            return;
         }
         toggleErrPop();
     });

@@ -95,6 +95,7 @@ pub fn status(snapshot: Snapshot, previous: &Status) -> Status {
     } else {
         previous.scroll_offset.min(s.scrollback.len())
     };
+    s.scroll_page = previous.scroll_page.clamp(1, 72);
     s.session = Some(snapshot.selection.session.clone());
     s.session_names = snapshot
         .sessions
@@ -271,6 +272,7 @@ mod tests {
             session: Some("s".into()),
             scroll_offset: 24,
             scroll_revision: 1234,
+            scroll_page: 40,
             proxy_url: "https://kmux.qingshan.dev".into(),
             ..Status::default()
         };
@@ -292,6 +294,7 @@ mod tests {
         };
         let result = status(snapshot, &previous);
         assert_eq!((result.scroll_offset, result.scroll_revision), (24, 1234));
+        assert_eq!(result.scroll_page, 40);
         assert_eq!(result.proxy_url, "https://kmux.qingshan.dev");
     }
 

@@ -1,11 +1,9 @@
 //! Pure logic for the kmuxd terminal daemon (kmux Kindle package).
 //!
-//! kmuxd holds a streaming connection to the kmux-proxy service on the
-//! server (via the tailscale SOCKS5 proxy), parses the tmux control-mode
-//! protocol (`control.rs`) and the VT escape sequences (`screen.rs`, via the
-//! `vte` crate) into a screen model, and exposes it to the WAF through
-//! status.json. The LIPC FFI helpers are vendored below like the other
-//! dev.qingshan daemons.
+//! The daemon sends backend-neutral actions to kmux-proxy and publishes
+//! snapshots to the WAF through status.json. The library contains the API,
+//! curl transport, configuration, status mapping, and terminal helpers; the
+//! Kindle-only LIPC service and workers live under `src/bin/daemon/`.
 
 use std::ffi::{c_char, c_int, c_void};
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -16,6 +14,7 @@ pub mod buttons;
 pub mod client;
 pub mod config;
 pub mod control;
+pub mod proxy;
 pub mod screen;
 pub mod status;
 pub mod tmux_keys;

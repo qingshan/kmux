@@ -1,0 +1,26 @@
+name: Publish KPM package
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    env:
+      KINDLE_CATALOG_TOKEN: ${{ secrets.KINDLE_CATALOG_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y gcc rsync
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: armv7-unknown-linux-gnueabihf
+      - uses: extractions/setup-just@v2
+      - run: just publish
+        if: env.KINDLE_CATALOG_TOKEN != ''
+      - run: echo "Catalog publishing skipped; configure KINDLE_CATALOG_TOKEN or run just publish locally."
+        if: env.KINDLE_CATALOG_TOKEN == ''

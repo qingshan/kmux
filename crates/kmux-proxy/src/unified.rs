@@ -1,7 +1,8 @@
 use crate::{
     backend::{Inventory, Link},
+    config::Config,
     copy::CopyView,
-    hosts, Config,
+    hosts,
 };
 use kmuxd::{api::*, screen::Screen, status::Status};
 use std::sync::{Mutex, OnceLock};

@@ -8,17 +8,27 @@
         "codex",
         "claude",
         "gemini",
-        "aider"
+        "aider",
+        "opencode",
+        "copilot",
+        "hermes",
+        "kiro",
+        "amp",
+        "droid"
       ],
       "keys": [
+        { "label": "y", "prompt": "y", "title": "Yes" },
+        { "label": "n", "prompt": "n", "title": "No" },
+        { "label": "1", "prompt": "1", "title": "Choice 1" },
+        { "label": "2", "prompt": "2", "title": "Choice 2" },
+        { "label": "3", "prompt": "3", "title": "Choice 3" },
+        { "label": "Continue", "prompt": "Continue", "title": "Continue" },
         { "label": "C", "key": "C-c", "title": "Ctrl-C cancel" },
         { "label": "D", "key": "C-d", "title": "Ctrl-D" },
         { "label": "/clear", "slash": "/clear" },
         { "label": "/resume", "slash": "/resume" },
         { "label": "/compact", "slash": "/compact" },
-        { "label": "/memory", "slash": "/memory" },
         { "label": "/help", "slash": "/help" },
-        { "label": "/model", "slash": "/model" },
         { "label": "/exit", "slash": "/exit" }
       ]
     },

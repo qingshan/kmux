@@ -2,17 +2,18 @@
 <html>
 <head>
 <meta charset="utf-8">
-<title>KMux</title>
+<title>kmux</title>
 <link rel="stylesheet" type="text/css" href="waf-base.css">
-<link rel="stylesheet" type="text/css" href="style.css?v=0.5.32">
+<link rel="stylesheet" type="text/css" href="style.css?v=0.6.0">
 </head>
 <body>
 <div class="page">
     <div class="top">
         <div id="window-tabs" class="wintabs"></div>
         <div class="tabs">
+            <button id="tab-read" type="button" class="tab" title="Reading mode" aria-label="Reading mode"><span aria-hidden="true">&#xF02D;</span></button>
             <button id="tab-settings" type="button" class="tab" title="Settings">&#xF013;</button>
-            <button id="btn-exit" type="button" class="tab" title="Exit KMux">&#xF08B;</button>
+            <button id="btn-exit" type="button" class="tab" title="Exit kmux">&#xF08B;</button>
         </div>
     </div>
     <div id="win-menu" class="win-menu overlay" role="dialog" aria-labelledby="menu-title" style="display:none">
@@ -49,7 +50,7 @@
     <div id="file-picker" class="file-picker overlay" role="dialog" aria-labelledby="files-title" style="display:none">
         <div class="overlay-header">
             <button type="button" id="close-file-picker" class="overlay-icon" title="Close files" aria-label="Close files"><span aria-hidden="true">&#xF00D;</span></button>
-            <div id="files-title" class="overlay-title">Insert file</div>
+            <div id="files-title" class="overlay-title">Choose file</div>
         </div>
         <div class="note" id="file-cwd"></div>
         <div class="search-field" id="file-search-field">
@@ -114,7 +115,7 @@
     <div id="view-main" class="view">
         <div id="term-area" class="term-area">
             <div id="term" class="term-wrap"></div>
-            <div id="state" class="state state-unknown">Connecting&hellip;</div>
+            <div id="state" class="state state-unknown" title="Connection status">Connecting&hellip;</div>
         </div>
         <!-- Shortcut panels + toolbar stay under the terminal; the Kindle
              keyboard is held open with them. -->
@@ -127,8 +128,8 @@
                 </div>
                 <div class="kb-panels">
                     <div id="panel-scroll" class="kb-panel">
-                        <button type="button" data-scroll="up" id="btn-up" title="Page up history">&#x21DE;</button>
-                        <button type="button" data-scroll="down" id="btn-down" title="Page down history">&#x21DF;</button>
+                        <button type="button" data-scroll="up" id="btn-up" title="Scroll up one line">&#x21DE;</button>
+                        <button type="button" data-scroll="down" id="btn-down" title="Scroll down one line">&#x21DF;</button>
                         <button type="button" data-scroll="bottom" id="btn-bottom" title="Back to live">&#xF103;</button>
                         <button type="button" data-act="cmd-prev" title="Previous command (M-Up)">M-&#x2191;</button>
                         <button type="button" data-act="cmd-next" title="Next command (M-Down)">M-&#x2193;</button>
@@ -141,9 +142,10 @@
                         <span id="prompt-list"></span>
                     </div>
                     <div id="panel-tools" class="kb-panel kb-panel-wrap" style="display:none">
-                        <button type="button" data-act="files" id="btn-files" title="Insert file">Files</button>
+                        <button type="button" data-act="files" id="btn-files" title="Choose file for compose">Files</button>
                         <button type="button" data-act="paste" id="btn-paste" title="Paste">Paste</button>
                         <button type="button" data-act="snippets" id="btn-snippets" title="Quick snippets">Snippets</button>
+                        <button type="button" data-act="read" id="btn-read" title="Reading mode" aria-label="Reading mode"><span aria-hidden="true">&#xF02D;</span></button>
                     </div>
                 </div>
             </div>
@@ -181,7 +183,7 @@
     </div>
 </div>
 <script type="text/javascript" src="waf-base.js"></script>
-<script type="text/javascript" src="script.js?v=0.5.32"></script>
-<script type="text/javascript" src="snippet-overlay.js?v=0.5.32"></script>
+<script type="text/javascript" src="script.js?v=0.6.0"></script>
+<script type="text/javascript" src="snippet-overlay.js?v=0.6.0"></script>
 </body>
 </html>

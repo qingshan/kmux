@@ -102,8 +102,12 @@ context.setTimeout = function (fn, ms) { nextTick = fn; tickDelay = ms; return 1
 context.startAutoRefresh();
 assert.equal(tickDelay, 500);
 for (var tick = 0; tick < 6; tick++) { clock += 500; nextTick(); }
-assert.equal(lists, 2, 'fast local refresh must not multiply proxy list requests');
+assert.equal(lists, 0, 'local refresh must not queue redundant proxy snapshots');
 context.lastData.eventUpdates = false;
+context.lastData.connected = true;
+nextTick();
+assert.equal(tickDelay, 750, 'connected tmux output is read promptly without event support');
+context.lastData.connected = false;
 nextTick();
 assert.equal(tickDelay, 2500);
 console.log('WAF event refresh and request throttling: ok');

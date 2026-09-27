@@ -12,6 +12,7 @@ pub fn from_command(command: &str) -> Option<Agent> {
             | "opencode"
             | "aider"
             | "gemini"
+            | "grok"
             | "amp"
             | "droid"
             | "hermes"
@@ -58,6 +59,7 @@ mod tests {
             from_command("/usr/bin/codex").unwrap().state,
             AgentState::Unknown
         );
+        assert_eq!(from_command("grok").unwrap().name, "grok");
         for command in ["sh", "node", "python", "my-codex", "codex-helper", "agent"] {
             assert!(from_command(command).is_none());
         }
