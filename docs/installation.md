@@ -29,6 +29,15 @@ KPM only reinstalls when the version changes. Bump the package version after
 daemon, WAF, or script changes; the build updates manifest and WAF cache-busting
 URLs together.
 
+## Publish a release
+
+Build with `just package <version>`, then upload the `.kpkg` to the matching
+GitHub Release (`v<version>`). Run `just publish <version>` after the asset is
+available. Publishing updates `repo/manifest.v2.json` in the shared KPM catalog
+with the absolute GitHub Release download URL; it does not build or commit
+package archives to the catalog. The release workflow performs this catalog
+update when `KINDLE_CATALOG_TOKEN` is configured.
+
 ## Sideload with KPM
 
 Copy the package to the Kindle’s USB storage, then install it using KPM. For a

@@ -39,7 +39,7 @@ demo-build:
 package version="": toolchain
     ./tools/pkg-build.sh {{version}}
 
-# Build and publish the package to the shared KPM catalog.
+# Publish an existing GitHub Release download URL to the shared KPM catalog.
 # Requires KINDLE_CATALOG_TOKEN when the catalog remote uses HTTPS.
-publish version="": toolchain
+publish version="":
     ./tools/publish.sh {{version}}
