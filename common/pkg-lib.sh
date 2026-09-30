@@ -320,11 +320,11 @@ pkg_launch_lock() {
     return 0
 }
 
+# SIGTERM makes appmgrd record an abnormal exit and show the Kindle
+# "Application Error" dialog until someone taps CLOSE. It also kills
+# com.lab126.stored's mesquite. Launching uses lipc start instead.
 pkg_kill_mesquite() {
-    for _p in /proc/[0-9]*; do
-        [ "$(cat "$_p/comm" 2>/dev/null)" = mesquite ] && kill "${_p#/proc/}" 2>/dev/null || true
-    done
-    sleep 1
+    return 0
 }
 
 pkg_appmgrd_start() {
@@ -357,6 +357,5 @@ pkg_launch() {
     if ! "$DEST/scripts/register-waf.sh"; then
         echo "[$(date)] register-waf.sh failed - WAF may not launch" >>"$_log"
     fi
-    pkg_kill_mesquite
     pkg_appmgrd_start
 }
