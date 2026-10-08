@@ -3280,6 +3280,17 @@ function wireTerminalKeyboard() {
 
 document.addEventListener("DOMContentLoaded", function () {
     hookChromeOnGo(KMUX_APP, "kmux");
+    var kindle = getKindle();
+    if (kindle && kindle.appmgr) {
+        /* Mesquite's native ongo property is write-only: even typeof on
+           its value throws a ReferenceError and aborts all startup. */
+        kindle.appmgr.ongo = function () {
+            updateChrome(KMUX_APP, "kmux");
+            sendCmd({ op: "watch_start" });
+            fetchStatusJson();
+            startAutoRefresh();
+        };
+    }
     paintFullGrid([], 80, 24);
 
     sendCmd({ op: "watch_start" });

@@ -69,6 +69,7 @@ pub fn action(op: &Value) -> Result<Action, String> {
 /// locally during its migration; backend commands never cross this boundary.
 pub fn status(snapshot: Snapshot, previous: &Status) -> Status {
     let mut s = snapshot.terminal;
+    s.ui_active = previous.ui_active;
     s.scroll_revision = previous.scroll_revision;
     s.proxy_url = previous.proxy_url.clone();
     s.socks5 = previous.socks5.clone();
@@ -272,6 +273,7 @@ mod tests {
             session: Some("s".into()),
             scroll_offset: 24,
             scroll_revision: 1234,
+            ui_active: true,
             scroll_page: 40,
             proxy_url: "https://kmux.qingshan.dev".into(),
             ..Status::default()
@@ -295,6 +297,10 @@ mod tests {
         let result = status(snapshot, &previous);
         assert_eq!((result.scroll_offset, result.scroll_revision), (24, 1234));
         assert_eq!(result.scroll_page, 40);
+        assert!(
+            result.ui_active,
+            "proxy snapshots must preserve local foreground state"
+        );
         assert_eq!(result.proxy_url, "https://kmux.qingshan.dev");
     }
 

@@ -126,6 +126,8 @@ fn http_json(
         "Content-Type: application/json".into(),
         "-d".into(),
         "@-".into(),
+        "-w".into(),
+        "\n%{http_code}".into(),
     ];
     if !cfg.socks5.is_empty() {
         args.extend(["--socks5-hostname".into(), cfg.socks5.clone()]);
@@ -146,10 +148,46 @@ fn http_json(
         .map_err(|e| e.to_string())?;
     let out = child.wait_with_output().map_err(|e| e.to_string())?;
     if !out.status.success() {
-        return Err(String::from_utf8_lossy(&out.stderr).into());
+        return Err(match out.status.code() {
+            Some(5 | 6) => "Cannot resolve proxy hostname. Check DNS and Wi-Fi.",
+            Some(7) => "Cannot connect to proxy. Check the server and network.",
+            Some(28) => "Proxy request timed out. Retrying automatically.",
+            Some(35 | 51 | 60) => {
+                "Proxy HTTPS connection failed. Check the certificate and device clock."
+            }
+            _ => "Proxy connection failed. Check the network and retry.",
+        }
+        .into());
     }
-    let value: serde_json::Value =
-        serde_json::from_slice(&out.stdout).map_err(|e| e.to_string())?;
+    parse_http_response(&out.stdout)
+}
+
+fn parse_http_response(output: &[u8]) -> Result<serde_json::Value, String> {
+    let split = output
+        .iter()
+        .rposition(|b| *b == b'\n')
+        .ok_or("Missing proxy HTTP status")?;
+    let code = std::str::from_utf8(&output[split + 1..])
+        .ok()
+        .and_then(|s| s.parse::<u16>().ok())
+        .ok_or("Invalid proxy HTTP status")?;
+    let value = serde_json::from_slice::<serde_json::Value>(&output[..split]);
+    if !(200..300).contains(&code) {
+        // Preserve structured API errors (including stale-host recovery), but
+        // never display an HTML gateway page or arbitrary response body.
+        if code < 500 {
+            if let Ok(ref value) = value {
+                if let Some(error) = value.get("error").and_then(|v| v.as_str()) {
+                    return Err(error.into());
+                }
+            }
+        }
+        return Err(format!(
+            "Proxy unavailable — HTTP {code}. Check the proxy URL and server."
+        ));
+    }
+    let value = value
+        .map_err(|_| "Proxy returned an invalid JSON response. Check the proxy URL.".to_string())?;
     if let Some(error) = value.get("error") {
         return Err(error.as_str().unwrap_or("proxy error").into());
     }
@@ -161,6 +199,27 @@ mod tests {
     use super::*;
     use std::path::PathBuf;
     use std::sync::atomic::{AtomicUsize, Ordering};
+
+    #[test]
+    fn gateway_errors_report_http_status_without_response_body() {
+        for code in [502, 503, 530] {
+            let response = format!("<html>private gateway details</html>\n{code}");
+            let error = parse_http_response(response.as_bytes()).unwrap_err();
+            assert!(error.contains(&format!("HTTP {code}")));
+            assert!(!error.contains("private"));
+        }
+        assert!(parse_http_response(b"not JSON\n200")
+            .unwrap_err()
+            .contains("invalid JSON"));
+        assert_eq!(
+            parse_http_response(b"{\"error\":\"unknown machine\"}\n404").unwrap_err(),
+            "unknown machine"
+        );
+        assert_eq!(
+            parse_http_response(b"{\"ok\":true}\n200").unwrap()["ok"],
+            true
+        );
+    }
 
     struct Fixture {
         path: PathBuf,

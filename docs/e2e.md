@@ -23,7 +23,15 @@ framebuffer screenshots. `LocalFixture` owns local proxy/tmux/Herdr cleanup;
 just test  # Rust, proxy, and WAF tests
 just e2e   # real tmux + Herdr API scenarios; no Kindle capture
 just demo  # host tests, Kindle feature tour, and media rendering
+python3 tests/e2e/kmux_e2e.py --kindle-recovery  # device recovery checks only
 ```
+
+The recovery scenario requires kmux open and connected on the Kindle. It checks
+HTTP error messages, automatic reconnect after a proxy-only network block,
+screen sleep/wake, Home/reopen, and foreground state across snapshots. It does
+not turn off Wi-Fi or type into the selected terminal. Temporary proxy URL and
+firewall changes are restored in `finally`; the firewall also has a device-local
+cleanup timer. Frames and their manifest go to `target/e2e/recovery/`.
 
 `just e2e` uses isolated tmux sockets and Herdr sessions. It covers inventory,
 Unicode and literal input, tabs, stale-input protection, scrollback, copy/search/

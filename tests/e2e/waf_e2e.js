@@ -1,6 +1,7 @@
 /* The WAF portion of the single E2E suite.  Keep each feature scenario in its
  * focused module, but expose one executable test entry to CI and developers. */
 [
+    "waf_startup.js",
     "waf_snippets.js",
     "waf_prompt.js",
     "waf_files.js",

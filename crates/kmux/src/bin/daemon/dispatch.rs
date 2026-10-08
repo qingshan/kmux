@@ -204,8 +204,13 @@ pub(crate) fn dispatch(rx: mpsc::Receiver<Op>) {
             Ok(snapshot) => {
                 selected_pane = Some(snapshot.selection.pane.clone());
                 let old = status_mutex().lock().unwrap().clone();
-                let new = kmuxd::client::status(snapshot, &old);
-                set_status(|s| *s = new);
+                let mut new = kmuxd::client::status(snapshot, &old);
+                set_status(|s| {
+                    // The foreground worker can update this after `old` was
+                    // captured. Only that worker owns the local UI state.
+                    new.ui_active = s.ui_active;
+                    *s = new;
+                });
             }
             Err(e) => {
                 log_line(&format!("proxy: {e}"));

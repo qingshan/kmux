@@ -18,6 +18,9 @@ Typical use:
         assert device.status()["connected"]
 """
 import json
+from contextlib import contextmanager
+import socket
+from urllib.parse import urlparse
 import os
 import shlex
 import subprocess
@@ -75,6 +78,50 @@ class Device:
         """Keep the Kindle awake for the duration of a run (best effort)."""
         self.ssh(f"lipc-set-prop com.lab126.powerd preventScreenSaver "
                  f"{1 if on else 0}", check=False)
+
+    def home(self):
+        self.ssh("lipc-set-prop com.lab126.appmgrd startdefault 1")
+
+    def sleep_screen(self):
+        # Schedule wake locally before sleeping so SSH is not the wake path.
+        self.ssh("setsid sh -c 'sleep 15; "
+                 "[ \"$(lipc-get-prop com.lab126.powerd state)\" = active ] || "
+                 "lipc-set-prop com.lab126.powerd wakeUp 1' "
+                 ">/dev/null 2>&1 </dev/null &")
+        self.ssh("lipc-set-prop com.lab126.powerd powerButton 1")
+
+    def wake(self):
+        # powerd exposes wakeUp only while asleep on this firmware.
+        self.ssh('[ "$(lipc-get-prop com.lab126.powerd state)" = active ] || '
+                 'lipc-set-prop com.lab126.powerd wakeUp 1')
+
+    @contextmanager
+    def proxy_url(self, url):
+        original = self.status()["proxyUrl"]
+        try:
+            self.cmd({"op": "config_set", "proxy_url": url})
+            yield
+        finally:
+            self.cmd({"op": "config_set", "proxy_url": original})
+
+    @contextmanager
+    def proxy_network_outage(self):
+        # Block only proxy traffic, preserving SSH and unrelated device traffic.
+        endpoint = urlparse(self.status()["proxyUrl"])
+        address = socket.gethostbyname(endpoint.hostname)
+        port = endpoint.port or (443 if endpoint.scheme == "https" else 80)
+        chain = "KMUXTEST" + str(os.getpid())
+        rule = "OUTPUT -d {} -p tcp --dport {} -j {}".format(address, port, chain)
+        cleanup = "iptables -D {}; iptables -F {}; iptables -X {}".format(rule, chain, chain)
+        # A device-local failsafe also cleans up if the test process disappears.
+        self.ssh("setsid sh -c {} >/dev/null 2>&1 </dev/null &".format(
+            shlex.quote("sleep 45; " + cleanup)))
+        try:
+            self.ssh("iptables -N {} && iptables -A {} -j REJECT && iptables -I {}".format(
+                chain, chain, rule))
+            yield
+        finally:
+            self.ssh(cleanup, check=False)
 
     def screenshot(self):
         """Raw device framebuffer as PNG bytes."""

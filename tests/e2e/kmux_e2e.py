@@ -349,8 +349,12 @@ def demo_suite():
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--record", action="store_true", help="record the WAF tour and encode GIF/MP4")
+    parser.add_argument("--kindle-recovery", action="store_true", help="check recovery on the connected Kindle")
     args = parser.parse_args()
-    host_suite()
+    if args.kindle_recovery:
+        scenario("Kindle connection recovery", importlib.import_module("kindle_recovery").main)
+    else:
+        host_suite()
     if args.record:
         demo_suite()
     print("\nkmux E2E: all selected scenarios passed", flush=True)
