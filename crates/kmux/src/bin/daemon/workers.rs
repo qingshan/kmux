@@ -2,13 +2,46 @@
 use super::{state::*, CONFIG_PATH};
 use kmuxd::config;
 use std::path::Path;
+use std::process::Command;
 use std::sync::atomic::Ordering;
 use std::thread;
-use std::time::Duration;
+use std::time::{Duration, Instant};
+
+fn app_is_foreground() -> bool {
+    let screen_active = Command::new("lipc-get-prop")
+        .args(["com.lab126.powerd", "state"])
+        .output()
+        .ok()
+        .filter(|output| output.status.success())
+        .is_some_and(|output| String::from_utf8_lossy(&output.stdout).trim() == "active");
+    if !screen_active {
+        return false;
+    }
+    Command::new("lipc-get-prop")
+        .args(["com.lab126.appmgrd", "activeApp"])
+        .output()
+        .ok()
+        .filter(|output| output.status.success())
+        .is_some_and(|output| String::from_utf8_lossy(&output.stdout).trim() == "dev.qingshan.kmux")
+}
 
 pub(crate) fn poll_thread() {
     let proxy = kmuxd::proxy::Client::new(Path::new(CONFIG_PATH));
+    let mut next_foreground_check = Instant::now();
+    let mut foreground = false;
     while KEEP_RUNNING.load(Ordering::SeqCst) {
+        if Instant::now() >= next_foreground_check {
+            let active = app_is_foreground();
+            if active != foreground {
+                foreground = active;
+                set_status(|s| s.ui_active = active);
+            }
+            next_foreground_check = Instant::now() + Duration::from_secs(5);
+        }
+        if !foreground {
+            thread::sleep(Duration::from_secs(1));
+            continue;
+        }
         if !WATCHING.load(Ordering::SeqCst) || POLL_PENDING.load(Ordering::SeqCst) {
             thread::sleep(Duration::from_millis(100));
             continue;
@@ -41,7 +74,7 @@ pub(crate) fn poll_thread() {
 pub(crate) fn button_thread() {
     let device = config::load(Path::new(CONFIG_PATH)).buttons_device;
     let cdev = std::ffi::CString::new(device.as_str()).unwrap();
-    let fd = unsafe { libc::open(cdev.as_ptr(), libc::O_RDONLY | libc::O_NONBLOCK) };
+    let fd = unsafe { libc::open(cdev.as_ptr(), libc::O_RDONLY) };
     if fd < 0 {
         log_line(&format!("buttons: cannot open {}", device));
         return;
@@ -57,7 +90,6 @@ pub(crate) fn button_thread() {
             )
         };
         if n as usize != std::mem::size_of::<libc::input_event>() {
-            std::thread::sleep(std::time::Duration::from_millis(20));
             continue;
         }
         if let Some(key) = kmuxd::buttons::key(ev.type_, ev.code, ev.value) {

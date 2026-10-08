@@ -5,6 +5,8 @@
 pub struct Status {
     pub connected: bool,
     #[serde(default)]
+    pub ui_active: bool,
+    #[serde(default)]
     pub event_updates: bool,
     #[serde(default)]
     pub event_revision: u64,
@@ -87,6 +89,7 @@ impl Default for Status {
     fn default() -> Self {
         Self {
             connected: false,
+            ui_active: false,
             event_updates: false,
             event_revision: 0,
             cols: 80,

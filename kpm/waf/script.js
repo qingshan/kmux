@@ -2965,8 +2965,9 @@ function startAutoRefresh() {
         fetchStatusJson();
         // kmuxd already captures inventory with its background snapshots.
         // An extra list action queues another network request ahead of input.
-        var ms = (lastData && lastData.eventUpdates) ? 500 :
-            ((lastData && (lastData.connected || lastData.copyMode)) ? 750 : 2500);
+        var ms = (lastData && lastData.uiActive === false) ? 5000 :
+            ((lastData && lastData.eventUpdates) ? 500 :
+            ((lastData && (lastData.connected || lastData.copyMode)) ? 750 : 2500));
         refreshTimer = setTimeout(tick, ms);
     }
     tick();

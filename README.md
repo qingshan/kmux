@@ -23,6 +23,11 @@ There are two parts:
 - `kmuxd` runs on the Kindle as the LIPC service `dev.qingshan.kmuxd`.
 - `kmux-proxy` runs on a server and connects to configured machines over SSH.
 
+The Kindle daemon polls the proxy only while kmux is in the foreground and the
+screen is active. Its
+page-button reader blocks until a button event, and the WAF slows status checks
+while another app is in front.
+
 The proxy presents tmux and Herdr through one versioned HTTP API. A machine is
 configured with one backend; the UI maps tmux sessions/windows/panes and Herdr
 workspaces/tabs/panes into the same navigation model.
