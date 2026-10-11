@@ -63,6 +63,16 @@ impl Drop for Link {
         let _ = self.child.wait();
     }
 }
+
+fn send_command(input: &mut dyn Write, command: &str) -> Result<(), String> {
+    // Any failed write means the child transport is gone. The request layer
+    // drops links with this error so the next snapshot opens a fresh one.
+    writeln!(input, "{command}").map_err(|e| format!("backend disconnected: {e}"))?;
+    input
+        .flush()
+        .map_err(|e| format!("backend disconnected: {e}"))
+}
+
 impl Link {
     pub fn open(cfg: &Config, host: &Host) -> Result<Self, String> {
         Self::open_with_events(cfg, host, true)
@@ -264,8 +274,7 @@ impl Link {
             })?
     }
     pub fn command(&mut self, command: &str) -> Result<String, String> {
-        writeln!(self.input, "{command}").map_err(|e| e.to_string())?;
-        self.input.flush().map_err(|e| e.to_string())?;
+        send_command(&mut self.input, command)?;
         self.receive()
     }
     pub fn rpc(&mut self, method: &str, params: Value) -> Result<Value, String> {
@@ -595,5 +604,20 @@ pub fn remote_command(host: &Host, remote: &str) -> Command {
         ]);
         c.arg("--").arg(&host.target).arg(remote);
         c
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::send_command;
+    use std::os::unix::net::UnixStream;
+
+    #[test]
+    fn closed_backend_pipe_requests_reconnect() {
+        let (mut input, child_end) = UnixStream::pair().unwrap();
+        drop(child_end);
+        let error = send_command(&mut input, "snapshot").unwrap_err();
+        assert!(error.starts_with("backend disconnected:"), "{error}");
+        assert!(error.contains("Broken pipe"), "{error}");
     }
 }

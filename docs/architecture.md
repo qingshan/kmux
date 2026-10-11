@@ -58,6 +58,11 @@ inventory and wake the Kindle refresh path; polling and reconnect logic remain
 available when subscriptions are unavailable. Herdr output is captured through
 timed reads because output-match events are not a raw terminal stream.
 
+Backend links are persistent while a machine is active. A failed command write
+or reply timeout clears the active link; the next snapshot opens a fresh
+backend connection. kmux does not replay timed-out input, so refresh to
+reconnect before sending another action.
+
 ## Security boundaries
 
 The proxy configuration contains the shared token and SSH targets. Public API

@@ -28,6 +28,11 @@ The proxy can discover sessions, tabs, panes, and agents on inactive machines
 without changing the active terminal. kmux can select existing panes, but does
 not expose actions to create or split panes.
 
+Backend links stay open while a machine is active. If a command write fails or
+the backend stops replying, kmux drops the link and reports a reconnectable
+error. The next snapshot opens a new link. Timed-out actions are not replayed;
+refresh before sending input again.
+
 ## Build and run
 
 Build the proxy on the host that owns the SSH configuration and keys:
